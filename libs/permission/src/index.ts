@@ -7,5 +7,8 @@ export * from './permission.module.js';
 export * from './permission.service.js';
 export * from './policies/resource-policy.js';
 export * from './services/data-scope.service.js';
+export * from './services/permission-sync.service.js';
 export * from './types/permission-metadata.type.js';
 export * from './types/resolved-data-scope.type.js';
+export * from './types/permission-seed.type.js';
+export * from './seeds/permissions.seed.js';

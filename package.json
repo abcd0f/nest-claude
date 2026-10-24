@@ -28,7 +28,14 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:cache": "vitest run libs/cache libs/config/src/domains/redis.domain.spec.ts",
-    "test:cache:e2e": "vitest run --config ./vitest.config.e2e.ts test/cache.e2e-spec.ts"
+    "test:cache:e2e": "vitest run --config ./vitest.config.e2e.ts test/cache.e2e-spec.ts",
+    "permission:sync": "tsx scripts/permission-sync.ts sync",
+    "permission:check": "tsx scripts/permission-sync.ts check",
+    "permission:cleanup": "tsx scripts/permission-sync.ts cleanup",
+    "permission:fix": "tsx scripts/permission-sync.ts fix",
+    "bootstrap:superadmin": "tsx scripts/bootstrap-superadmin.ts",
+    "db:backup": "bash scripts/db-backup.sh",
+    "db:restore": "bash scripts/db-restore.sh"
   },
   "dependencies": {
     "@fastify/static": "^10.1.6",
@@ -73,6 +80,7 @@
     "prisma": "^7.10.1",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "tsx": "^4.19.2",
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"

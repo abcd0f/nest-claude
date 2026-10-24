@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { PermissionGuard } from './guards/permission.guard.js';
 import { PermissionService } from './permission.service.js';
 import { DataScopeService } from './services/data-scope.service.js';
+import { PermissionSyncService } from './services/permission-sync.service.js';
 
 /**
  * 权限模块
@@ -12,6 +13,7 @@ import { DataScopeService } from './services/data-scope.service.js';
  * - PermissionService（权限解析和缓存）
  * - DataScopeService（数据范围解析）
  * - PermissionGuard（权限守卫）
+ * - PermissionSyncService（权限同步和诊断）
  *
  * 使用方式：
  * 1. 在 AppModule 中导入 PermissionModule
@@ -27,7 +29,7 @@ import { DataScopeService } from './services/data-scope.service.js';
  */
 @Module({
   imports: [DatabaseModule],
-  providers: [PermissionService, DataScopeService, PermissionGuard],
-  exports: [PermissionService, DataScopeService, PermissionGuard],
+  providers: [PermissionService, DataScopeService, PermissionGuard, PermissionSyncService],
+  exports: [PermissionService, DataScopeService, PermissionGuard, PermissionSyncService],
 })
 export class PermissionModule {}
