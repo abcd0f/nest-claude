@@ -1,5 +1,5 @@
-import { PrismaService } from '@app/database';
 import { parseId } from '@app/common/utils/bigint.util.js';
+import { PrismaService } from '@app/database';
 import {
   BadRequestException,
   ConflictException,
@@ -7,11 +7,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { CreateMenuDto } from './dto/create-menu.dto.js';
-import { UpdateMenuDto } from './dto/update-menu.dto.js';
 import { MenuResponseDto, MenuTreeDto } from './dto/menu-response.dto.js';
 import { RoleMenuTreeDto } from './dto/role-menu-tree.dto.js';
-import { plainToInstance } from 'class-transformer';
+import { UpdateMenuDto } from './dto/update-menu.dto.js';
 
 /**
  * 菜单服务
