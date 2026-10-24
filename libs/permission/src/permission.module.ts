@@ -2,6 +2,7 @@ import { DatabaseModule } from '@app/database';
 import { Module } from '@nestjs/common';
 import { PermissionGuard } from './guards/permission.guard.js';
 import { PermissionService } from './permission.service.js';
+import { DataScopeService } from './services/data-scope.service.js';
 
 /**
  * 权限模块
@@ -9,6 +10,7 @@ import { PermissionService } from './permission.service.js';
  * 提供：
  * - @Permission 装饰器（用于声明路由权限）
  * - PermissionService（权限解析和缓存）
+ * - DataScopeService（数据范围解析）
  * - PermissionGuard（权限守卫）
  *
  * 使用方式：
@@ -25,7 +27,7 @@ import { PermissionService } from './permission.service.js';
  */
 @Module({
   imports: [DatabaseModule],
-  providers: [PermissionService, PermissionGuard],
-  exports: [PermissionService, PermissionGuard],
+  providers: [PermissionService, DataScopeService, PermissionGuard],
+  exports: [PermissionService, DataScopeService, PermissionGuard],
 })
 export class PermissionModule {}

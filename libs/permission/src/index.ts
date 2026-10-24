@@ -1,10 +1,11 @@
+export * from './constants/reserved-roles.js';
+export * from './decorators/permission.decorator.js';
+export * from './enums/data-scope.enum.js';
+export * from './enums/mode.enum.js';
+export * from './guards/permission.guard.js';
 export * from './permission.module.js';
 export * from './permission.service.js';
-export * from './guards/permission.guard.js';
-export * from './decorators/permission.decorator.js';
-export * from './enums/mode.enum.js';
-export * from './enums/data-scope.enum.js';
+export * from './policies/resource-policy.js';
+export * from './services/data-scope.service.js';
 export * from './types/permission-metadata.type.js';
 export * from './types/resolved-data-scope.type.js';
-export * from './constants/reserved-roles.js';
-
