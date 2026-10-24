@@ -5,10 +5,13 @@ import { CryptoModule } from '@app/crypto';
 import { DatabaseModule } from '@app/database';
 import { LoggerModule } from '@app/logger';
 import { SwaggerModule } from '@app/swagger';
+import { AuditModule } from '@app/audit';
+import { AuthModule } from '@app/auth';
 import { Module } from '@nestjs/common';
 
 import { AppController } from './app.controller.js';
 import { SystemModule } from './modules/system/system.module.js';
+import { AuthGatewayModule } from './modules/auth/auth-gateway.module.js';
 
 @Module({
   imports: [
@@ -18,11 +21,16 @@ import { SystemModule } from './modules/system/system.module.js';
     LoggerModule,
     CacheModule,
     CryptoModule,
+    DatabaseModule,
+    // 认证和审计模块
+    AuthModule,
+    AuditModule,
     // core 负责全局异常过滤等 HTTP 基础设施，只在这里导入一次。
     CoreModule,
     SwaggerModule,
+    // 业务模块
+    AuthGatewayModule,
     SystemModule,
-    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [],

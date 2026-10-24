@@ -5,6 +5,7 @@ import { AuthGuard, AuthModule } from '@app/auth';
 import { BUSINESS_CODE, DEFAULT_BUSINESS_MESSAGE } from '@app/common/constants/index.js';
 import { throttlerConfig } from '@app/config';
 import { PermissionGuard, PermissionModule } from '@app/permission';
+import { AuditModule, AuditInterceptor } from '@app/audit';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -23,6 +24,10 @@ import { ResponseInterceptor } from './interceptors/index.js';
  * 1. ThrottlerGuard - 限流
  * 2. AuthGuard - 身份认证（JWT 验证，设置 request.user）
  * 3. PermissionGuard - 权限判定（检查 @Permission 装饰器）
+ *
+ * 拦截器执行顺序（按注册顺序）：
+ * 1. AuditInterceptor - 审计日志记录（记录操作日志）
+ * 2. ResponseInterceptor - 响应格式化（统一响应格式）
  */
 @Module({
   imports: [
@@ -36,6 +41,7 @@ import { ResponseInterceptor } from './interceptors/index.js';
     }),
     AuthModule,
     PermissionModule,
+    AuditModule,
   ],
   providers: [
     // 守卫的执行顺序由注册顺序决定
@@ -54,6 +60,11 @@ import { ResponseInterceptor } from './interceptors/index.js';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    // 拦截器的执行顺序由注册顺序决定
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

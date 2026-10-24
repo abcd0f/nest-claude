@@ -6,6 +6,7 @@ import { UserModule } from './user/user.module.js';
 import { DeptModule } from './dept/dept.module.js';
 import { PostModule } from './post/post.module.js';
 import { PermissionManagementModule } from './permission/permission-management.module.js';
+import { AuditQueryModule } from './audit/audit.module.js';
 
 @Global()
 @Module({
@@ -17,6 +18,7 @@ import { PermissionManagementModule } from './permission/permission-management.m
     DeptModule,
     PostModule,
     PermissionManagementModule,
+    AuditQueryModule,
   ],
 })
 export class SystemModule {}

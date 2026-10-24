@@ -273,4 +273,50 @@ export const PERMISSION_SEEDS: PermissionSeedDefinition[] = [
     action: 'cache',
     remark: '清除权限缓存',
   },
+
+  // ==================== 登录日志 ====================
+  {
+    code: 'system:loginLog:view',
+    name: '登录日志查看',
+    resource: 'loginLog',
+    action: 'view',
+    remark: '查看登录日志列表',
+  },
+  {
+    code: 'system:loginLog:remove',
+    name: '登录日志删除',
+    resource: 'loginLog',
+    action: 'remove',
+    remark: '删除登录日志',
+  },
+  {
+    code: 'system:loginLog:export',
+    name: '登录日志导出',
+    resource: 'loginLog',
+    action: 'export',
+    remark: '导出登录日志',
+  },
+
+  // ==================== 操作日志 ====================
+  {
+    code: 'system:operLog:view',
+    name: '操作日志查看',
+    resource: 'operLog',
+    action: 'view',
+    remark: '查看操作日志列表',
+  },
+  {
+    code: 'system:operLog:remove',
+    name: '操作日志删除',
+    resource: 'operLog',
+    action: 'remove',
+    remark: '删除操作日志',
+  },
+  {
+    code: 'system:operLog:export',
+    name: '操作日志导出',
+    resource: 'operLog',
+    action: 'export',
+    remark: '导出操作日志',
+  },
 ];

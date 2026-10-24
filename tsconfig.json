@@ -7,6 +7,12 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "paths": {
+      "@app/audit": [
+        "./libs/audit/src/index.ts"
+      ],
+      "@app/audit/*": [
+        "./libs/audit/src/*"
+      ],
       "@app/auth": [
         "./libs/auth/src/index.ts"
       ],
