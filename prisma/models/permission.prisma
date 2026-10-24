@@ -1,0 +1,33 @@
+/// 系统权限表
+/// 独立的权限目录，是后端授权的事实来源
+model Permission {
+  /// 权限ID
+  permissionId BigInt   @id @default(autoincrement()) @map("permission_id")
+  /// 权限编码（全局唯一，稳定标识）
+  code         String   @unique @db.VarChar(128)
+  /// 权限名称
+  name         String   @db.VarChar(100)
+  /// 资源名称（可选，便于分组）
+  resource     String?  @db.VarChar(100)
+  /// 操作动作（可选，如：view/add/edit/remove）
+  action       String?  @db.VarChar(64)
+  /// 关联菜单ID（可选，C/F 类型菜单）
+  menuId       BigInt?  @unique @map("menu_id")
+  /// 权限状态：0=启用 1=停用
+  status       String   @default("0") @db.Char(1)
+  /// 备注
+  remark       String?  @db.VarChar(500)
+  /// 创建时间
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// 更新时间
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /// 关联的菜单（一个 C/F 菜单只能绑定一个权限）
+  menu  Menu?             @relation(fields: [menuId], references: [menuId], onDelete: SetNull)
+  /// 被授予此权限的角色
+  roles RolePermission[]
+
+  @@index([status])
+  @@index([resource])
+  @@map("sys_permission")
+}

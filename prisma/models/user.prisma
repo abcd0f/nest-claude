@@ -25,6 +25,8 @@ model User {
   loginIp            String?   @map("login_ip") @db.VarChar(128)
   /// 最后登录时间
   loginDate          DateTime? @map("login_date") @db.Timestamptz(6)
+  /// 权限版本号（用于权限缓存失效）
+  permissionVersion  Int       @default(0) @map("permission_version")
   /// 创建时间
   createTime         DateTime  @default(now()) @map("create_time") @db.Timestamptz(6)
   /// 更新时间

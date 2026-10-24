@@ -34,6 +34,18 @@ model RoleMenu {
   @@map("sys_role_menu")
 }
 
+/// 角色与权限关联
+model RolePermission {
+  roleId       BigInt     @map("role_id")
+  permissionId BigInt     @map("permission_id")
+  role         Role       @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [permissionId], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("sys_role_permission")
+}
+
 /// 自定义数据范围的角色与部门关联
 model RoleDept {
   roleId BigInt @map("role_id")

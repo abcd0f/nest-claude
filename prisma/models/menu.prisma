@@ -35,7 +35,8 @@ model Menu {
   /// 备注
   remark     String?  @db.VarChar(500)
 
-  roles RoleMenu[]
+  roles      RoleMenu[]
+  permission Permission?
 
   @@index([parentId])
   @@map("sys_menu")
