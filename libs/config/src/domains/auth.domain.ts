@@ -1,100 +1,86 @@
-import { IsBoolean, IsInt, IsString, Min } from 'class-validator';
-import { defineConfigDomain } from '../core/define-domain.js';
-import { integerParser } from '../core/parsers.js';
+import { asBoolean, asObject, asStrictInteger, asString, defineConfigDomain } from '../core/index.js';
 
 /**
  * 认证配置
  */
-export class AuthConfig {
+export interface AuthConfig {
   /**
    * JWT 访问令牌密钥
    * 生产环境必须使用强随机密钥，不能提交到代码仓库
    */
-  @IsString()
-  accessTokenSecret!: string;
+  accessTokenSecret: string;
 
   /**
    * JWT 刷新令牌密钥
    * 必须与访问令牌密钥不同
    */
-  @IsString()
-  refreshTokenSecret!: string;
+  refreshTokenSecret: string;
 
   /**
    * 访问令牌有效期（秒）
    * 建议：15分钟 - 1小时
    */
-  @IsInt()
-  @Min(60)
-  accessTokenTtl!: number;
+  accessTokenTtl: number;
 
   /**
    * 刷新令牌有效期（秒）
    * 建议：7天 - 30天
    */
-  @IsInt()
-  @Min(86400)
-  refreshTokenTtl!: number;
+  refreshTokenTtl: number;
 
   /**
    * JWT 签发者（issuer）
    */
-  @IsString()
-  issuer!: string;
+  issuer: string;
 
   /**
    * JWT 受众（audience）
    */
-  @IsString()
-  audience!: string;
+  audience: string;
 
   /**
    * 是否启用刷新令牌轮换
    * 启用后每次刷新都会废弃旧令牌，提高安全性
    */
-  @IsBoolean()
-  refreshTokenRotation!: boolean;
+  refreshTokenRotation: boolean;
 
   /**
    * 密码重置令牌有效期（秒）
    * 建议：15分钟 - 1小时
    */
-  @IsInt()
-  @Min(60)
-  passwordResetTokenTtl!: number;
+  passwordResetTokenTtl: number;
 }
 
 /**
  * 认证配置域定义
  */
-export const authDomain = defineConfigDomain({
-  name: 'auth',
-  schema: AuthConfig,
-  defaults: {
-    // 默认密钥仅用于开发环境，生产环境必须覆盖
-    accessTokenSecret: 'CHANGE_ME_IN_PRODUCTION_ACCESS_TOKEN_SECRET',
-    refreshTokenSecret: 'CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET',
-    // 访问令牌 30 分钟
-    accessTokenTtl: 1800,
-    // 刷新令牌 7 天
-    refreshTokenTtl: 604800,
-    issuer: 'nest-admin',
-    audience: 'nest-admin',
-    refreshTokenRotation: true,
-    // 密码重置令牌 30 分钟
-    passwordResetTokenTtl: 1800,
-  },
-  parsers: {
-    'access-token-ttl': integerParser,
-    'refresh-token-ttl': integerParser,
-    'refresh-token-rotation': (value) => {
-      if (typeof value === 'boolean') return value;
-      if (typeof value === 'string') {
-        return value.toLowerCase() === 'true';
-      }
-      return Boolean(value);
-    },
-    'password-reset-token-ttl': integerParser,
+export const authDomain = defineConfigDomain<AuthConfig>({
+  namespace: 'auth',
+  parse(raw): AuthConfig {
+    const value = asObject(raw, 'auth');
+    return {
+      accessTokenSecret: asString(
+        value['access-token-secret'],
+        'auth.access-token-secret',
+        'CHANGE_ME_IN_PRODUCTION_ACCESS_TOKEN_SECRET',
+      ),
+      refreshTokenSecret: asString(
+        value['refresh-token-secret'],
+        'auth.refresh-token-secret',
+        'CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET',
+      ),
+      accessTokenTtl: asStrictInteger(value['access-token-ttl'], 'auth.access-token-ttl', 1800, 60),
+      refreshTokenTtl: asStrictInteger(value['refresh-token-ttl'], 'auth.refresh-token-ttl', 604800, 86400),
+      issuer: asString(value.issuer, 'auth.issuer', 'nest-admin'),
+      audience: asString(value.audience, 'auth.audience', 'nest-admin'),
+      refreshTokenRotation: asBoolean(value['refresh-token-rotation'], 'auth.refresh-token-rotation', true),
+      passwordResetTokenTtl: asStrictInteger(
+        value['password-reset-token-ttl'],
+        'auth.password-reset-token-ttl',
+        1800,
+        60,
+      ),
+    };
   },
 });
 

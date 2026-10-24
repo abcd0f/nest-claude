@@ -1,12 +1,32 @@
 # 配置系统设置总结
 
+## 最近更新
+
+### ✅ 配置模块统一简化（2025-01-24）
+
+**改进内容**:
+- 统一所有配置域为函数式 parse 风格
+- 移除 class-validator 依赖混用
+- 简化配置域定义，降低复杂度
+- 保持所有配置项和功能不变
+
+**改进前**: 混用两种风格
+- 旧风格: class + decorator + schema/defaults/parsers
+- 新风格: interface + parse 函数
+
+**改进后**: 统一为新风格
+- 所有域使用 `interface` 定义类型
+- 所有域使用 `parse(raw)` 函数解析
+- 使用 `asString`、`asInteger` 等工具函数
+- 代码更简洁、易读、易维护
+
 ## 已完成的工作
 
 ### ✅ 1. 创建 Auth 配置域
 
 **文件**: `libs/config/src/domains/auth.domain.ts`
 
-定义了完整的认证配置结构：
+定义了完整的认证配置结构（已简化为函数式风格）：
 - 访问令牌密钥和刷新令牌密钥（分离）
 - Token 有效期配置
 - JWT 签发者和受众
