@@ -105,3 +105,22 @@ throttler:
   limit: 100
   # 超限后的封禁时长，单位毫秒；省略时使用接口生效的 ttl，0 表示不附加封禁
   # block-duration: 60000
+
+auth:
+  # JWT 访问令牌密钥（生产环境必须使用强随机密钥，放在 production.local.yaml）
+  # 可以使用 `openssl rand -base64 64` 生成
+  access-token-secret: CHANGE_ME_IN_PRODUCTION_ACCESS_TOKEN_SECRET
+  # JWT 刷新令牌密钥（必须与访问令牌密钥不同）
+  refresh-token-secret: CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET
+  # 访问令牌有效期（秒）- 建议 15分钟到1小时
+  access-token-ttl: 1800
+  # 刷新令牌有效期（秒）- 建议 7天到30天
+  refresh-token-ttl: 604800
+  # JWT 签发者
+  issuer: nest-admin
+  # JWT 受众
+  audience: nest-admin
+  # 是否启用刷新令牌轮换（提高安全性）
+  refresh-token-rotation: true
+  # 密码重置令牌有效期（秒）
+  password-reset-token-ttl: 1800

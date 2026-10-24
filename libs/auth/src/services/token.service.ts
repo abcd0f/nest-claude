@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import { authConfig, type AuthConfig } from '@app/config';
 
 /**
  * JWT Token payload 接口
@@ -50,45 +51,6 @@ export interface AccessTokenPayload {
 }
 
 /**
- * Token 配置接口
- * 用于初始化 TokenService
- */
-export interface TokenConfig {
-  /**
-   * JWT 签名密钥
-   */
-  secret: string;
-
-  /**
-   * 访问 Token 过期时间（秒）
-   * 推荐 15 分钟 - 1 小时
-   */
-  accessTokenTtl: number;
-
-  /**
-   * 刷新 Token 过期时间（秒）
-   * 推荐 7-30 天
-   */
-  refreshTokenTtl: number;
-
-  /**
-   * JWT 发行者
-   */
-  issuer: string;
-
-  /**
-   * JWT 受众
-   */
-  audience: string;
-
-  /**
-   * JWT 算法
-   * 默认 'HS256'
-   */
-  algorithm?: string;
-}
-
-/**
  * Token 服务
  * 负责 JWT 签发、验证和刷新 Token 管理
  *
@@ -99,7 +61,7 @@ export interface TokenConfig {
 export class TokenService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly config: TokenConfig,
+    @Inject(authConfig.KEY) private readonly config: AuthConfig,
   ) {}
 
   /**
@@ -121,10 +83,10 @@ export class TokenService {
     };
 
     const signOptions: JwtSignOptions = {
-      expiresIn: this.config.accessTokenTtl,
+      expiresIn: `${this.config.accessTokenTtl}s`,
       issuer: this.config.issuer,
       audience: this.config.audience,
-      algorithm: (this.config.algorithm || 'HS256') as any,
+      secret: this.config.accessTokenSecret,
     };
 
     return this.jwtService.signAsync(payload, signOptions);
@@ -149,10 +111,10 @@ export class TokenService {
     };
 
     const signOptions: JwtSignOptions = {
-      expiresIn: this.config.refreshTokenTtl,
+      expiresIn: `${this.config.refreshTokenTtl}s`,
       issuer: this.config.issuer,
       audience: this.config.audience,
-      algorithm: (this.config.algorithm || 'HS256') as any,
+      secret: this.config.refreshTokenSecret,
     };
 
     return this.jwtService.signAsync(payload, signOptions);
@@ -175,6 +137,7 @@ export class TokenService {
    */
   async verifyAccessToken(token: string): Promise<AccessTokenPayload> {
     return this.jwtService.verifyAsync<AccessTokenPayload>(token, {
+      secret: this.config.accessTokenSecret,
       issuer: this.config.issuer,
       audience: this.config.audience,
     });
@@ -189,6 +152,7 @@ export class TokenService {
    */
   async verifyRefreshToken(token: string): Promise<AccessTokenPayload> {
     return this.jwtService.verifyAsync<AccessTokenPayload>(token, {
+      secret: this.config.refreshTokenSecret,
       issuer: this.config.issuer,
       audience: this.config.audience,
     });

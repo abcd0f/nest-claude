@@ -30,3 +30,12 @@ logger:
 swagger:
   # 生产环境默认关闭文档，可在 production.local.yaml 中覆盖
   enabled: false
+
+# ============================================================
+# 🔐 安全提醒：以下密钥必须在 production.local.yaml 中覆盖
+# ============================================================
+# auth:
+#   access-token-secret: <使用 openssl rand -base64 64 生成>
+#   refresh-token-secret: <使用 openssl rand -base64 64 生成>
+#   # 可选：缩短访问令牌有效期以提高安全性
+#   access-token-ttl: 900  # 15分钟

@@ -1,0 +1,35 @@
+# ============================================================
+# 生产环境本地配置模板（不入库）
+#
+# 使用方法：
+#   1. 复制此文件为 production.local.yaml
+#   2. 填入真实的密钥和凭据
+#   3. production.local.yaml 会自动被 .gitignore 忽略
+# ============================================================
+
+# 数据库连接（生产环境真实凭据）
+database:
+  url: postgresql://USER:PASSWORD@host:5432/DATABASE?schema=public
+
+# Redis 连接（如有密码）
+redis:
+  # username: default
+  password: your-redis-password
+
+# JWT 密钥（必须配置强随机密钥）
+# 生成命令：openssl rand -base64 64
+auth:
+  access-token-secret: YOUR_PRODUCTION_ACCESS_TOKEN_SECRET_HERE
+  refresh-token-secret: YOUR_PRODUCTION_REFRESH_TOKEN_SECRET_HERE
+  # 可选：缩短访问令牌有效期
+  # access-token-ttl: 900  # 15分钟
+
+# API 加解密密钥（如启用）
+# 生成 RSA 密钥对命令：
+#   openssl genrsa -out private.pem 1024
+#   openssl rsa -in private.pem -pubout -out public.pem
+#   openssl rsa -in private.pem -outform DER -out private.der && base64 -w 0 private.der
+#   openssl rsa -in private.pem -pubout -outform DER -out public.der && base64 -w 0 public.der
+api-decrypt:
+  private-key: YOUR_RSA_PRIVATE_KEY_BASE64
+  public-key: YOUR_RSA_PUBLIC_KEY_BASE64
