@@ -3,39 +3,64 @@ import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
 /**
  * 操作日志查询 DTO
+ *
+ * 所有字段均可选，全部省略时按操作时间倒序返回第 1 页。
  */
 export class OperationLogQueryDto {
-  /** 模块标题 */
+  /**
+   * 模块标题
+   *
+   * 精确匹配，取值为 `@Audit({ title })` 装饰器上声明的标题。
+   */
   @IsOptional()
   @IsString()
   title?: string;
 
-  /** 操作人用户ID */
+  /**
+   * 操作人用户 ID
+   *
+   * 十进制字符串；格式非法时返回 422，此处未自定义错误消息，
+   * 返回的是 class-validator 默认提示。
+   */
   @IsOptional()
   @Matches(/^(0|[1-9]\d*)$/)
   operUserId?: string;
 
-  /** 操作状态：0 成功、1 失败 */
+  /**
+   * 操作状态：0 成功、1 失败
+   */
   @IsOptional()
   @IsIn(['0', '1'])
   status?: '0' | '1';
 
-  /** 开始时间 */
+  /**
+   * 时间范围起点（含）
+   */
   @IsOptional()
   @Type(() => Date)
   startTime?: Date;
 
-  /** 结束时间 */
+  /**
+   * 时间范围终点（含）
+   */
   @IsOptional()
   @Type(() => Date)
   endTime?: Date;
 
-  /** 页码 */
+  /**
+   * 页码，从 1 开始
+   *
+   * 注意：本 DTO 未继承 `PageQueryDto`，默认值 1 / 10 与 common 分页常量不同。
+   */
   @IsOptional()
   @Type(() => Number)
   page?: number = 1;
 
-  /** 每页数量 */
+  /**
+   * 每页数量，默认 10
+   *
+   * 本 DTO 未做上限校验，与 `PageQueryDto` 的 200 上限不一致。
+   */
   @IsOptional()
   @Type(() => Number)
   pageSize?: number = 10;
