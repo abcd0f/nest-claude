@@ -13,9 +13,11 @@ describe('apiDecryptDomain', () => {
   });
 
   it('requires both RSA keys when enabled', () => {
-    expect(() => apiDecryptDomain.parse({ enabled: true }, { environment: 'test' }))
-      .toThrow('api-decrypt.private-key');
-    expect(() => apiDecryptDomain.parse({ enabled: true, 'private-key': 'private' }, { environment: 'test' }))
-      .toThrow('api-decrypt.public-key');
+    expect(() => apiDecryptDomain.parse({ enabled: true }, { environment: 'test' })).toThrow(
+      'api-decrypt.private-key',
+    );
+    expect(() =>
+      apiDecryptDomain.parse({ enabled: true, 'private-key': 'private' }, { environment: 'test' }),
+    ).toThrow('api-decrypt.public-key');
   });
 });

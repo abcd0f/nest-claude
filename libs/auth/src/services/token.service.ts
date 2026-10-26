@@ -1,6 +1,7 @@
-import { Injectable, Inject } from '@nestjs/common';
+import type { AuthConfig } from '@app/config';
+import { authConfig } from '@app/config';
+import { Inject, Injectable } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { authConfig, type AuthConfig } from '@app/config';
 
 /**
  * JWT Token payload 接口

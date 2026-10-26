@@ -170,8 +170,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private defaultMessageOf(code: number): string {
-    return DEFAULT_BUSINESS_MESSAGE[code]
-      ?? DEFAULT_BUSINESS_MESSAGE[BUSINESS_CODE.INTERNAL_ERROR];
+    return DEFAULT_BUSINESS_MESSAGE[code] ?? DEFAULT_BUSINESS_MESSAGE[BUSINESS_CODE.INTERNAL_ERROR];
   }
 
   private errorBody(code: number, message: string, errors?: FieldError[]): ApiErrorResponse {

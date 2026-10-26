@@ -1,17 +1,16 @@
+import type { UserPrincipal } from '@app/auth';
+import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import type { AuditMetadata, OperationAuditContext } from '../types/index.js';
 import {
+
   Injectable,
-  type NestInterceptor,
-  type ExecutionContext,
-  type CallHandler,
+
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable, tap, catchError, throwError } from 'rxjs';
-import type { FastifyRequest } from 'fastify';
+import { catchError, Observable, tap, throwError } from 'rxjs';
+import { AUDIT_METADATA_KEY } from '../decorators/audit.decorator.js';
 import { OperationLogService } from '../services/operation-log.service.js';
 import { SensitiveDataService } from '../services/sensitive-data.service.js';
-import { AUDIT_METADATA_KEY } from '../decorators/audit.decorator.js';
-import type { AuditMetadata, OperationAuditContext } from '../types/index.js';
-import type { UserPrincipal } from '@app/auth';
 
 /**
  * 审计拦截器 - 自动记录操作日志
@@ -36,7 +35,7 @@ export class AuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const request = context.switchToHttp().getRequest<FastifyRequest>();
+    const request = context.switchToHttp().getRequest();
     const user = (request as unknown as { user?: UserPrincipal }).user;
 
     // 开始时间
@@ -80,7 +79,7 @@ export class AuditInterceptor implements NestInterceptor {
   /**
    * 提取客户端 IP
    */
-  private extractIp(request: FastifyRequest): string {
+  private extractIp(request: any): string {
     const forwarded = request.headers['x-forwarded-for'];
     if (forwarded) {
       const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
@@ -93,7 +92,7 @@ export class AuditInterceptor implements NestInterceptor {
   /**
    * 提取并脱敏请求参数
    */
-  private extractParams(request: FastifyRequest, metadata: AuditMetadata): string | undefined {
+  private extractParams(request: any, metadata: AuditMetadata): string | undefined {
     if (metadata.recordParams === false) {
       return undefined;
     }

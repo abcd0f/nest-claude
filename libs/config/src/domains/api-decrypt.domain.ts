@@ -1,4 +1,10 @@
-import { asBoolean, asObject, asOptionalString, asString, defineConfigDomain } from '../core/index.js';
+import {
+  asBoolean,
+  asObject,
+  asOptionalString,
+  asString,
+  defineConfigDomain,
+} from '../core/index.js';
 
 export interface ApiDecryptConfig {
   enabled: boolean;

@@ -2,11 +2,11 @@ import {
   IsEmail,
   IsIn,
   IsOptional,
-  IsString,
   IsPhoneNumber,
+  IsString,
+  Matches,
   MaxLength,
   MinLength,
-  Matches,
 } from 'class-validator';
 
 /**
@@ -44,12 +44,12 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^(0|[1-9][0-9]*)$/, { message: 'deptId 必须是十进制字符串' })
+  @Matches(/^(0|[1-9]\d*)$/, { message: 'deptId 必须是十进制字符串' })
   deptId?: string;
 
   @IsOptional()
   @IsString({ each: true })
-  @Matches(/^(0|[1-9][0-9]*)$/, {
+  @Matches(/^(0|[1-9]\d*)$/, {
     each: true,
     message: '每个 roleId 必须是十进制字符串',
   })
@@ -57,7 +57,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString({ each: true })
-  @Matches(/^(0|[1-9][0-9]*)$/, {
+  @Matches(/^(0|[1-9]\d*)$/, {
     each: true,
     message: '每个 postId 必须是十进制字符串',
   })

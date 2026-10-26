@@ -1,17 +1,14 @@
+import { Audit, LoginLogService, OperationType } from '@app/audit';
+import { AuthService, LoginDto, Public } from '@app/auth';
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
   HttpCode,
   HttpStatus,
+  Post,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthService } from '@app/auth';
-import { LoginDto } from '@app/auth';
-import { Public } from '@app/auth';
-import { LoginLogService, OperationType, Audit } from '@app/audit';
-import type { FastifyRequest } from 'fastify';
 
 /**
  * 认证控制器
@@ -30,10 +27,7 @@ export class AuthGatewayController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() loginDto: LoginDto,
-    @Req() request: FastifyRequest,
-  ) {
+  async login(@Body() loginDto: LoginDto, @Req() request: any) {
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
 
@@ -41,11 +35,7 @@ export class AuthGatewayController {
       const result = await this.authService.login(loginDto, clientIp);
 
       // 记录登录成功日志
-      await this.loginLogService.logSuccess(
-        loginDto.username,
-        clientIp,
-        userAgent,
-      );
+      await this.loginLogService.logSuccess(loginDto.username, clientIp, userAgent);
 
       return {
         code: 200,
@@ -54,14 +44,8 @@ export class AuthGatewayController {
       };
     } catch (error) {
       // 记录登录失败日志
-      const reason =
-        error instanceof Error ? error.message : '登录失败';
-      await this.loginLogService.logFailure(
-        loginDto.username,
-        clientIp,
-        userAgent,
-        reason,
-      );
+      const reason = error instanceof Error ? error.message : '登录失败';
+      await this.loginLogService.logFailure(loginDto.username, clientIp, userAgent, reason);
 
       throw error;
     }
@@ -73,17 +57,13 @@ export class AuthGatewayController {
   @Post('logout')
   @Audit({ title: '用户登出', operationType: OperationType.LOGOUT })
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@Req() request: FastifyRequest) {
+  async logout(@Req() request: any) {
     const user = (request as unknown as { user?: { username?: string } }).user;
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
 
     if (user?.username) {
-      await this.loginLogService.logLogout(
-        user.username,
-        clientIp,
-        userAgent,
-      );
+      await this.loginLogService.logLogout(user.username, clientIp, userAgent);
     }
 
     // TODO: Implement token blacklist or session revocation
@@ -113,7 +93,7 @@ export class AuthGatewayController {
   /**
    * 提取客户端 IP
    */
-  private extractIp(request: FastifyRequest): string {
+  private extractIp(request: any): string {
     const forwarded = request.headers['x-forwarded-for'];
     if (forwarded) {
       const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];

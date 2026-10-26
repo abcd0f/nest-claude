@@ -1,4 +1,9 @@
-export { configSource, loadConfigSource, resetConfigSource, resolveEnvironment } from './config-loader.js';
+export {
+  configSource,
+  loadConfigSource,
+  resetConfigSource,
+  resolveEnvironment,
+} from './config-loader.js';
 export { defineConfigDomain } from './define-domain.js';
 export {
   asBoolean,

@@ -23,4 +23,5 @@ export const ARGON2ID_HASH_PREFIX_PATTERN = /^\$argon2id\$v=19\$m=65536,p=1,t=3\
 export const LOGGER_TEST_SECRETS_PATTERN = /root-secret|nested-secret/;
 
 /** HTTP 日志脱敏测试中不应出现在输出里的敏感值。 */
-export const HTTP_LOG_TEST_SECRETS_PATTERN = /query-secret|header-secret|cookie-secret|body-secret|business-secret/;
+export const HTTP_LOG_TEST_SECRETS_PATTERN =
+  /query-secret|header-secret|cookie-secret|body-secret|business-secret/;

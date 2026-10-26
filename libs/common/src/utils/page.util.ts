@@ -1,5 +1,5 @@
-import { PageMetaDto } from '../dto/base.dto.js';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../constants/pagination.js';
+import { PageMetaDto } from '../dto/base.dto.js';
 
 /**
  * 分页查询参数
@@ -26,10 +26,7 @@ export interface PaginationCalc {
  */
 export function paginate(input?: PaginationInput): PaginationCalc {
   const page = Math.max(input?.page ?? DEFAULT_PAGE, 1);
-  const pageSize = Math.min(
-    Math.max(input?.pageSize ?? DEFAULT_PAGE_SIZE, 1),
-    MAX_PAGE_SIZE,
-  );
+  const pageSize = Math.min(Math.max(input?.pageSize ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
 
   return {
     skip: (page - 1) * pageSize,

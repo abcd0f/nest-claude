@@ -1,5 +1,4 @@
 import type { UserPrincipal } from '@app/auth';
-import type { FastifyRequest } from 'fastify';
 import type { PermissionMetadata } from '../types/permission-metadata.type.js';
 import {
   CanActivate,
@@ -57,7 +56,7 @@ export class PermissionGuard implements CanActivate {
     }
 
     // 2. 获取当前用户
-    const request = context.switchToHttp().getRequest<FastifyRequest>();
+    const request = context.switchToHttp().getRequest();
     const user = (request as any).user as UserPrincipal | undefined;
 
     if (!user) {

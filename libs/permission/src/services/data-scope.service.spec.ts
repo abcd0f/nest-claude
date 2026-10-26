@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DataScopeService } from './data-scope.service.js';
-import { DataScope } from '../enums/data-scope.enum.js';
 import { PrismaService } from '@app/database';
+import { Test, TestingModule } from '@nestjs/testing';
+import { DataScope } from '../enums/data-scope.enum.js';
+import { DataScopeService } from './data-scope.service.js';
 
-describe('DataScopeService', () => {
+describe('dataScopeService', () => {
   let service: DataScopeService;
   let prisma: PrismaService;
 
@@ -175,31 +175,19 @@ describe('DataScopeService', () => {
 
   describe('buildUserWhereCondition', () => {
     it('应该为 ALL 范围返回空对象', async () => {
-      const condition = await service.buildUserWhereCondition(
-        { kind: DataScope.ALL },
-        10n,
-        1n,
-      );
+      const condition = await service.buildUserWhereCondition({ kind: DataScope.ALL }, 10n, 1n);
 
       expect(condition).toEqual({});
     });
 
     it('应该为 DEPT 范围返回按 deptId 的条件', async () => {
-      const condition = await service.buildUserWhereCondition(
-        { kind: DataScope.DEPT },
-        10n,
-        1n,
-      );
+      const condition = await service.buildUserWhereCondition({ kind: DataScope.DEPT }, 10n, 1n);
 
       expect(condition).toEqual({ deptId: 10n });
     });
 
     it('应该为 DEPT 范围且用户无部门时返回不匹配条件', async () => {
-      const condition = await service.buildUserWhereCondition(
-        { kind: DataScope.DEPT },
-        null,
-        1n,
-      );
+      const condition = await service.buildUserWhereCondition({ kind: DataScope.DEPT }, null, 1n);
 
       expect(condition).toEqual({ deptId: { equals: -1n } });
     });
@@ -223,11 +211,7 @@ describe('DataScopeService', () => {
     });
 
     it('应该为 SELF 范围返回按 userId 的条件', async () => {
-      const condition = await service.buildUserWhereCondition(
-        { kind: DataScope.SELF },
-        10n,
-        1n,
-      );
+      const condition = await service.buildUserWhereCondition({ kind: DataScope.SELF }, 10n, 1n);
 
       expect(condition).toEqual({ userId: 1n });
     });
@@ -257,11 +241,7 @@ describe('DataScopeService', () => {
 
   describe('getDeptChildrenIds', () => {
     it('应该查询部门及其所有子部门', async () => {
-      mockPrisma.dept.findMany.mockResolvedValue([
-        { deptId: 1n },
-        { deptId: 2n },
-        { deptId: 3n },
-      ]);
+      mockPrisma.dept.findMany.mockResolvedValue([{ deptId: 1n }, { deptId: 2n }, { deptId: 3n }]);
 
       const result = await service.getDeptChildrenIds(1n);
 
@@ -312,21 +292,13 @@ describe('DataScopeService', () => {
 
   describe('buildDeptWhereCondition', () => {
     it('应该为 DEPT 范围构建按 deptId 的条件', async () => {
-      const condition = await service.buildDeptWhereCondition(
-        { kind: DataScope.DEPT },
-        10n,
-        1n,
-      );
+      const condition = await service.buildDeptWhereCondition({ kind: DataScope.DEPT }, 10n, 1n);
 
       expect(condition).toEqual({ deptId: 10n });
     });
 
     it('应该为 SELF 范围构建按 leaderId 的条件', async () => {
-      const condition = await service.buildDeptWhereCondition(
-        { kind: DataScope.SELF },
-        10n,
-        1n,
-      );
+      const condition = await service.buildDeptWhereCondition({ kind: DataScope.SELF }, 10n, 1n);
 
       expect(condition).toEqual({ leaderId: 1n });
     });
@@ -346,21 +318,13 @@ describe('DataScopeService', () => {
 
   describe('buildOperLogWhereCondition', () => {
     it('应该为 ALL 范围返回空对象', async () => {
-      const condition = await service.buildOperLogWhereCondition(
-        { kind: DataScope.ALL },
-        10n,
-        1n,
-      );
+      const condition = await service.buildOperLogWhereCondition({ kind: DataScope.ALL }, 10n, 1n);
 
       expect(condition).toEqual({});
     });
 
     it('应该为 DEPT 范围构建操作人部门条件', async () => {
-      const condition = await service.buildOperLogWhereCondition(
-        { kind: DataScope.DEPT },
-        10n,
-        1n,
-      );
+      const condition = await service.buildOperLogWhereCondition({ kind: DataScope.DEPT }, 10n, 1n);
 
       expect(condition).toEqual({
         operUser: { deptId: 10n },
@@ -368,11 +332,7 @@ describe('DataScopeService', () => {
     });
 
     it('应该为 SELF 范围构建操作人 ID 条件', async () => {
-      const condition = await service.buildOperLogWhereCondition(
-        { kind: DataScope.SELF },
-        10n,
-        1n,
-      );
+      const condition = await service.buildOperLogWhereCondition({ kind: DataScope.SELF }, 10n, 1n);
 
       expect(condition).toEqual({ operUserId: 1n });
     });
@@ -392,12 +352,9 @@ describe('DataScopeService', () => {
     });
 
     it('应该忽略 null 和 undefined', () => {
-      const result = DataScopeService.mergeWhereConditions(
-        { userId: 1n },
-        null,
-        undefined,
-        { status: '0' },
-      );
+      const result = DataScopeService.mergeWhereConditions({ userId: 1n }, null, undefined, {
+        status: '0',
+      });
 
       expect(result).toEqual({
         AND: [{ userId: 1n }, { status: '0' }],

@@ -1,4 +1,11 @@
-import { asBoolean, asObject, asOptionalString, asStrictInteger, asString, defineConfigDomain } from '../core/index.js';
+import {
+  asBoolean,
+  asObject,
+  asOptionalString,
+  asStrictInteger,
+  asString,
+  defineConfigDomain,
+} from '../core/index.js';
 
 export interface RedisConfig {
   enabled: boolean;

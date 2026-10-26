@@ -52,9 +52,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((data) => ({
         code,
-        data: data === null || data === undefined
-          ? null
-          : (instanceToPlain(data) as unknown as T),
+        data: data === null || data === undefined ? null : (instanceToPlain(data) as unknown as T),
         message: resultCodeMessage(code),
       })),
     );

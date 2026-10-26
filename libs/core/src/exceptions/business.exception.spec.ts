@@ -1,4 +1,8 @@
-import { BUSINESS_CODE, httpStatusToBusinessCode, prismaCodeToHttpStatus } from '@app/common/constants/index.js';
+import {
+  BUSINESS_CODE,
+  httpStatusToBusinessCode,
+  prismaCodeToHttpStatus,
+} from '@app/common/constants/index.js';
 import { HttpStatus } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
@@ -39,11 +43,14 @@ describe('业务异常', () => {
   });
 
   it('拒绝把成功码 0 当作错误码', () => {
-    expect(() => new BusinessException({
-      code: BUSINESS_CODE.SUCCESS,
-      message: '不该出现',
-      status: HttpStatus.BAD_REQUEST,
-    })).toThrow('业务异常的业务码不能为 0');
+    expect(
+      () =>
+        new BusinessException({
+          code: BUSINESS_CODE.SUCCESS,
+          message: '不该出现',
+          status: HttpStatus.BAD_REQUEST,
+        }),
+    ).toThrow('业务异常的业务码不能为 0');
   });
 
   it('通用业务码与 HTTP 状态码一致，并为 Prisma 错误提供标准状态映射', () => {

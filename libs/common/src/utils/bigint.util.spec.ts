@@ -2,7 +2,7 @@ import { UnprocessableEntityException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { formatId, formatIds, parseId, parseIds } from './bigint.util';
 
-describe('BigInt Utils', () => {
+describe('bigInt Utils', () => {
   describe('parseId', () => {
     it('应该解析有效的十进制字符串', () => {
       expect(parseId('123')).toBe(123n);
@@ -81,9 +81,7 @@ describe('BigInt Utils', () => {
     });
 
     it('应该在错误消息中指示具体位置', () => {
-      expect(() => parseIds(['1', '2', 'invalid'], 'testIds')).toThrow(
-        /testIds\[2\]/,
-      );
+      expect(() => parseIds(['1', '2', 'invalid'], 'testIds')).toThrow(/testIds\[2\]/);
     });
 
     it('应该处理空数组（虽然 DTO 验证应该拒绝）', () => {
@@ -97,16 +95,11 @@ describe('BigInt Utils', () => {
     });
 
     it('应该保持 null 和 undefined 值', () => {
-      expect(formatIds([1n, null, undefined, 2n])).toEqual([
-        '1',
-        null,
-        undefined,
-        '2',
-      ]);
+      expect(formatIds([1n, null, undefined, 2n])).toEqual(['1', null, undefined, '2']);
     });
   });
 
-  describe('Big Integer Boundary Tests', () => {
+  describe('big Integer Boundary Tests', () => {
     it('应该正确处理 JavaScript 安全整数边界', () => {
       // Number.MAX_SAFE_INTEGER = 9007199254740991
       const safeMax = '9007199254740991';

@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsIn, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
 /**
  * 操作日志查询 DTO
@@ -12,7 +12,7 @@ export class OperationLogQueryDto {
 
   /** 操作人用户ID */
   @IsOptional()
-  @Matches(/^(0|[1-9][0-9]*)$/)
+  @Matches(/^(0|[1-9]\d*)$/)
   operUserId?: string;
 
   /** 操作状态：0 成功、1 失败 */

@@ -1,7 +1,15 @@
 import type { PageQueryDto, PageResponseDto } from '@app/common';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@app/common/constants/pagination.js';
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+} from '@app/common/constants/pagination.js';
 
-export { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '@app/common/constants/pagination.js';
+export {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+} from '@app/common/constants/pagination.js';
 
 /** 分页入参由 PageQueryDto 完成 HTTP 字符串转换和校验 */
 export type PageQuery = Pick<PageQueryDto, 'page' | 'pageSize' | 'orderByColumn' | 'isAsc'>;

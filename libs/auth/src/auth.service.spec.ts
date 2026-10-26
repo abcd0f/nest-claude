@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { PasswordHashService } from '@app/crypto';
+import { PrismaService } from '@app/database';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service.js';
 import { TokenService } from './services/token.service.js';
-import { PrismaService } from '@app/database';
-import { PasswordHashService } from '@app/crypto';
 
-describe('AuthService', () => {
+describe('authService', () => {
   let service: AuthService;
   let tokenService: jest.Mocked<TokenService>;
   let prismaService: jest.Mocked<PrismaService>;
@@ -111,10 +111,7 @@ describe('AuthService', () => {
         },
       });
 
-      expect(passwordHashService.verify).toHaveBeenCalledWith(
-        'password123',
-        'hashed-password',
-      );
+      expect(passwordHashService.verify).toHaveBeenCalledWith('password123', 'hashed-password');
 
       expect(prismaService.user.update).toHaveBeenCalledWith({
         where: { userId: 1n },
@@ -131,9 +128,7 @@ describe('AuthService', () => {
       prismaService.user.findUnique.mockResolvedValue(mockUser);
       passwordHashService.verify.mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for non-existent user', async () => {
@@ -142,9 +137,7 @@ describe('AuthService', () => {
       prismaService.user.findUnique.mockResolvedValue(null);
       passwordHashService.verify.mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw BadRequestException for disabled user', async () => {
@@ -154,9 +147,7 @@ describe('AuthService', () => {
       prismaService.user.findUnique.mockResolvedValue(disabledUser);
       passwordHashService.verify.mockResolvedValue(true);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for deleted user', async () => {
@@ -166,9 +157,7 @@ describe('AuthService', () => {
       prismaService.user.findUnique.mockResolvedValue(deletedUser);
       passwordHashService.verify.mockResolvedValue(true);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -193,19 +182,13 @@ describe('AuthService', () => {
         tokenType: 'Bearer',
       });
 
-      expect(tokenService.verifyRefreshToken).toHaveBeenCalledWith(
-        'refresh-token',
-      );
+      expect(tokenService.verifyRefreshToken).toHaveBeenCalledWith('refresh-token');
     });
 
     it('should throw UnauthorizedException for invalid refresh token', async () => {
-      tokenService.verifyRefreshToken.mockRejectedValue(
-        new UnauthorizedException(),
-      );
+      tokenService.verifyRefreshToken.mockRejectedValue(new UnauthorizedException());
 
-      await expect(service.refreshToken('invalid-token')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.refreshToken('invalid-token')).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw BadRequestException for disabled user', async () => {
@@ -219,17 +202,13 @@ describe('AuthService', () => {
       tokenService.verifyRefreshToken.mockResolvedValue(payload as any);
       prismaService.user.findUnique.mockResolvedValue(disabledUser);
 
-      await expect(service.refreshToken('refresh-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.refreshToken('refresh-token')).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('logout', () => {
     it('should logout successfully', async () => {
-      await expect(
-        service.logout(1n, 'session-id'),
-      ).resolves.not.toThrow();
+      await expect(service.logout(1n, 'session-id')).resolves.not.toThrow();
     });
   });
 

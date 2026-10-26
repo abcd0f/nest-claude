@@ -1,13 +1,13 @@
-import { Controller, Get, Post, Delete, Logger, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Permission } from '@app/permission';
-import { PermissionSyncService } from '@app/permission/services/permission-sync.service';
-import { PermissionService } from '@app/permission/permission.service';
-import { PERMISSION_SEEDS } from '@app/permission/seeds/permissions.seed';
 import {
-  PermissionSyncResult,
+  Permission,
+  PERMISSION_SEEDS,
   PermissionCheckResult,
-} from '@app/permission/types/permission-seed.type';
+  PermissionService,
+  PermissionSyncResult,
+  PermissionSyncService,
+} from '@app/permission';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 /**
  * 权限管理控制器

@@ -13,6 +13,7 @@ export interface ConfigDomainDefinition<TConfig extends ConfigObject> {
 export function defineConfigDomain<TConfig extends ConfigObject>(
   definition: ConfigDomainDefinition<TConfig>,
 ): ConfigDomain<TConfig> {
-  const token = registerAs(definition.namespace, () => getCompiledConfig<TConfig>(definition.namespace));
+  const token = registerAs(definition.namespace, () =>
+    getCompiledConfig<TConfig>(definition.namespace));
   return { ...definition, token };
 }

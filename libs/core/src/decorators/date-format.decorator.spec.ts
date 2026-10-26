@@ -25,7 +25,9 @@ describe('日期格式化', () => {
     const value = new Date(Number.NaN);
     expect(formatDateValue(value)).toBe(value);
     expect((plainToInstance(DateDto, { value }).value as Date).getTime()).toBeNaN();
-    expect((instanceToPlain(Object.assign(new DateDto(), { value })).value as Date).getTime()).toBeNaN();
+    expect(
+      (instanceToPlain(Object.assign(new DateDto(), { value })).value as Date).getTime(),
+    ).toBeNaN();
   });
 
   it('支持自定义格式', () => {

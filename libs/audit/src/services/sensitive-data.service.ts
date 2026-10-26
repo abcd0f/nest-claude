@@ -25,13 +25,7 @@ export class SensitiveDataService {
   /**
    * 需要部分脱敏的字段（手机号、身份证等）
    */
-  private readonly MASK_FIELDS = new Set([
-    'phone',
-    'mobile',
-    'idCard',
-    'email',
-    'bankCard',
-  ]);
+  private readonly MASK_FIELDS = new Set(['phone', 'mobile', 'idCard', 'email', 'bankCard']);
 
   /**
    * 脱敏请求参数

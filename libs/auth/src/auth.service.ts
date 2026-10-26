@@ -1,16 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-  Logger,
-} from '@nestjs/common';
-import { PrismaService } from '@app/database';
+import { v4 as uuidv4 } from 'node:crypto';
 import { PasswordHashService } from '@app/crypto';
-import { TokenService } from './services/token.service.js';
-import { LoginDto } from './dto/login.dto.js';
+import { PrismaService } from '@app/database';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { LoginResultDto, TokenDto } from './dto/login-result.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { TokenService } from './services/token.service.js';
 import { UserPrincipal } from './types/user-principal.type.js';
-import { v4 as uuidv4 } from 'crypto';
 
 /**
  * 认证服务
@@ -58,10 +53,7 @@ export class AuthService {
    * );
    * // result.token.accessToken 用于后续请求
    */
-  async login(
-    dto: LoginDto,
-    clientIp?: string,
-  ): Promise<LoginResultDto> {
+  async login(dto: LoginDto, clientIp?: string): Promise<LoginResultDto> {
     // 1. 查询用户
     const user = await this.prisma.user.findUnique({
       where: { username: dto.username },
@@ -79,10 +71,7 @@ export class AuthService {
     // 如果用户不存在，使用 dummy hash
     let passwordValid = false;
     if (user) {
-      passwordValid = await this.passwordHashService.verify(
-        dto.password,
-        user.password,
-      );
+      passwordValid = await this.passwordHashService.verify(dto.password, user.password);
     } else {
       // Dummy hash：防止通过登录时间差异来枚举用户
       await this.passwordHashService.verify(
@@ -127,17 +116,14 @@ export class AuthService {
     });
 
     // 6. 记录登录审计（可选，取决于是否有 audit 模块）
-    this.logger.log(
-      `User logged in: ${user.userId} from IP: ${clientIp || 'unknown'}`,
-    );
+    this.logger.log(`User logged in: ${user.userId} from IP: ${clientIp || 'unknown'}`);
 
     return {
       token: {
         accessToken,
         expiresIn: this.tokenService.getAccessTokenExpiresInMs() / 1000,
         refreshToken,
-        refreshTokenExpiresIn:
-          this.tokenService.getRefreshTokenExpiresInMs() / 1000,
+        refreshTokenExpiresIn: this.tokenService.getRefreshTokenExpiresInMs() / 1000,
         tokenType: 'Bearer',
       },
       userId,
@@ -194,10 +180,7 @@ export class AuthService {
     }
 
     // 4. 签发新的 Access Token（保持原会话 ID）
-    const newAccessToken = await this.tokenService.signAccessToken(
-      payload.sub,
-      payload.sid,
-    );
+    const newAccessToken = await this.tokenService.signAccessToken(payload.sub, payload.sid);
 
     return {
       accessToken: newAccessToken,
@@ -314,10 +297,7 @@ export class AuthService {
       return null;
     }
 
-    const isPasswordValid = await this.passwordHashService.verify(
-      password,
-      user.password,
-    );
+    const isPasswordValid = await this.passwordHashService.verify(password, user.password);
 
     if (!isPasswordValid) {
       return null;

@@ -55,7 +55,10 @@ export class CacheService implements OnModuleDestroy {
     keys.forEach(assertKey);
     if (!keys.length) return [];
     const values = this.redis.config.enabled
-      ? await this.read(() => this.cache.mget<T>(keys), keys.map(() => undefined))
+      ? await this.read(
+          () => this.cache.mget<T>(keys),
+          keys.map(() => undefined),
+        )
       : keys.map(() => undefined);
     for (const value of values) {
       if (value === undefined) this.metrics.misses++;

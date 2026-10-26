@@ -1,16 +1,15 @@
+import { parseId } from '@app/common';
 import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  UnauthorizedException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TokenService } from '../services/token.service.js';
 import { AuthService } from '../auth.service.js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
-import { AccessTokenPayload } from '../services/token.service.js';
-import { parseId } from '@app/common';
+import { TokenService } from '../services/token.service.js';
 
 /**
  * 认证守卫（AuthGuard）
@@ -81,9 +80,7 @@ export class AuthGuard implements CanActivate {
 
       // 5. 检查用户状态
       if (user.status !== '0' || user.delFlag !== '0') {
-        this.logger.warn(
-          `User is disabled or deleted: ${userId}`,
-        );
+        this.logger.warn(`User is disabled or deleted: ${userId}`);
         throw new UnauthorizedException('用户已被停用或删除');
       }
 
@@ -97,7 +94,9 @@ export class AuthGuard implements CanActivate {
         throw error;
       }
 
-      this.logger.warn(`Token verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      this.logger.warn(
+        `Token verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       throw new UnauthorizedException('令牌无效或已过期');
     }
   }

@@ -9,11 +9,14 @@ import { LoggerTransport } from './logger.transport.js';
 @Module({
   imports: [
     PinoLoggerModule.forRootAsync({
-      providers: [{
-        provide: LoggerTransport,
-        inject: [loggerConfig.KEY],
-        useFactory: (config: LoggerConfig) => LoggerTransport.create(createTransportOptions(config)),
-      }],
+      providers: [
+        {
+          provide: LoggerTransport,
+          inject: [loggerConfig.KEY],
+          useFactory: (config: LoggerConfig) =>
+            LoggerTransport.create(createTransportOptions(config)),
+        },
+      ],
       inject: [loggerConfig.KEY, LoggerTransport],
       useFactory: (config: LoggerConfig, output: LoggerTransport): Params => ({
         pinoHttp: [createHttpOptions(config), output.stream],

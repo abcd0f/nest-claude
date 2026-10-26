@@ -14,7 +14,7 @@
     "start:debug": "cross-env NODE_ENV=development nest start --debug --watch",
     "start:prod": "cross-env NODE_ENV=production node dist/apps/gateway/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "format": "prettier --write \"apps/**/*.{ts,js} libs/**/*.{ts,js}\"",
+    "format": "prettier --write \"apps/**/*.{ts,js}\" \"libs/**/*.{ts,js}\"",
     "clean": "node ./script/clean.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

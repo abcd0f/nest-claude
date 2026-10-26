@@ -1,6 +1,6 @@
-import { IsOptional, IsString, IsEnum } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
-import { PageQueryDto, SortOrder } from './base.dto.js';
+import { Transform } from 'class-transformer';
+import { IsOptional, IsString } from 'class-validator';
+import { PageQueryDto } from './base.dto.js';
 
 /**
  * 带关键字搜索的列表查询 DTO

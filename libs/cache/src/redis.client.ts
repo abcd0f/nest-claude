@@ -32,7 +32,10 @@ export class RedisClient implements OnModuleInit, OnApplicationShutdown {
         reconnectStrategy: (retries) => {
           // 首次连接失败立即终止启动；运行期在同一客户端上重建 socket。
           if (!this.connected || this.closing) return false;
-          return Math.min(config.retryDelay * 2 ** Math.min(retries, 5), 30000) + Math.floor(Math.random() * 100);
+          return (
+            Math.min(config.retryDelay * 2 ** Math.min(retries, 5), 30000) +
+            Math.floor(Math.random() * 100)
+          );
         },
       },
     });
@@ -88,7 +91,10 @@ export class RedisClient implements OnModuleInit, OnApplicationShutdown {
       return await Promise.race([
         Promise.resolve().then(operation),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error('Redis 命令执行超时')), this.config.commandTimeout);
+          timer = setTimeout(
+            () => reject(new Error('Redis 命令执行超时')),
+            this.config.commandTimeout,
+          );
         }),
       ]);
     } finally {

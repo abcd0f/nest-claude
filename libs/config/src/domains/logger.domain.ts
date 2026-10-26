@@ -1,4 +1,10 @@
-import { asBoolean, asEnum, asObject, asPositiveInteger, defineConfigDomain } from '../core/index.js';
+import {
+  asBoolean,
+  asEnum,
+  asObject,
+  asPositiveInteger,
+  defineConfigDomain,
+} from '../core/index.js';
 
 const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
 const ROLL_FREQUENCIES = ['hourly', 'daily', 'weekly'] as const;
@@ -30,7 +36,11 @@ export const loggerDomain = defineConfigDomain<LoggerConfig>({
       level: asEnum(value.level, 'logger.level', LOG_LEVELS, 'info'),
       console: {
         enabled: asBoolean(console.enabled, 'logger.console.enabled', true),
-        pretty: asBoolean(console.pretty, 'logger.console.pretty', context.environment !== 'production'),
+        pretty: asBoolean(
+          console.pretty,
+          'logger.console.pretty',
+          context.environment !== 'production',
+        ),
       },
       file: {
         enabled: asBoolean(file.enabled, 'logger.file.enabled', true),

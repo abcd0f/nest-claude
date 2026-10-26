@@ -30,9 +30,13 @@ describe('缓存服务回源策略', () => {
     const loader = vi.fn(async () => {
       throw failure;
     });
-    const results = await Promise.allSettled(Array.from({ length: 20 }, () => service.wrap('user', loader)));
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, () => service.wrap('user', loader)),
+    );
     expect(loader).toHaveBeenCalledTimes(1);
-    expect(results.every(result => result.status === 'rejected' && result.reason === failure)).toBe(true);
+    expect(
+      results.every((result) => result.status === 'rejected' && result.reason === failure),
+    ).toBe(true);
     expect(await service.wrap('user', async () => ({ id: 1 }))).toEqual({ id: 1 });
   });
 

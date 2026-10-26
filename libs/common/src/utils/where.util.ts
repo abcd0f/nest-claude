@@ -5,7 +5,9 @@ import { Prisma } from '@prisma/client';
  * @param conditions 条件数组，null/undefined 被忽略
  * @returns 合并后的 Where 条件
  */
-export function andWhere(...conditions: (Prisma.WhereInput | null | undefined)[]): Prisma.WhereInput {
+export function andWhere(
+  ...conditions: (Prisma.WhereInput | null | undefined)[]
+): Prisma.WhereInput {
   const valid = conditions.filter((c) => c !== null && c !== undefined);
 
   if (valid.length === 0) {
@@ -26,7 +28,9 @@ export function andWhere(...conditions: (Prisma.WhereInput | null | undefined)[]
  * @param conditions 条件数组，null/undefined 被忽略
  * @returns 合并后的 Where 条件
  */
-export function orWhere(...conditions: (Prisma.WhereInput | null | undefined)[]): Prisma.WhereInput {
+export function orWhere(
+  ...conditions: (Prisma.WhereInput | null | undefined)[]
+): Prisma.WhereInput {
   const valid = conditions.filter((c) => c !== null && c !== undefined);
 
   if (valid.length === 0) {

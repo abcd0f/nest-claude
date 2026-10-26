@@ -29,8 +29,10 @@ export class ApiEncryptGuard implements CanActivate {
       headers: Record<string, string | undefined>;
       [API_ENCRYPT_RESPONSE]?: boolean;
     }>();
-    if (supportsEncryptedRequest(request.method)
-      && !request.headers[this.config.headerFlag.toLowerCase()]) {
+    if (
+      supportsEncryptedRequest(request.method) &&
+      !request.headers[this.config.headerFlag.toLowerCase()]
+    ) {
       throw new ForbiddenException('此接口要求使用 AES/RSA 加密请求');
     }
 

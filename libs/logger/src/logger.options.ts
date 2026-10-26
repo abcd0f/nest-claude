@@ -5,7 +5,14 @@ import type { Options } from 'pino-http';
 import { resolve } from 'node:path';
 import { stdSerializers, stdTimeFunctions } from 'pino';
 
-const REDACT_FIELDS = ['password', 'token', 'accessToken', 'refreshToken', 'authorization', 'cookie'];
+const REDACT_FIELDS = [
+  'password',
+  'token',
+  'accessToken',
+  'refreshToken',
+  'authorization',
+  'cookie',
+];
 
 /** 日志生成策略与输出策略分开，HTTP 与业务日志共用同一根实例。 */
 export function createHttpOptions(config: LoggerConfig): Options {
@@ -13,7 +20,7 @@ export function createHttpOptions(config: LoggerConfig): Options {
     level: config.level,
     timestamp: stdTimeFunctions.isoTime,
     redact: {
-      paths: REDACT_FIELDS.flatMap(field => [field, `*.${field}`]),
+      paths: REDACT_FIELDS.flatMap((field) => [field, `*.${field}`]),
       censor: '[REDACTED]',
     },
     wrapSerializers: false,

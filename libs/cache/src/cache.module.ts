@@ -13,11 +13,12 @@ import { createRedisKeyv } from './redis.store.js';
     {
       provide: CACHE_MANAGER,
       inject: [RedisClient],
-      useFactory: (owner: RedisClient) => createCache({
-        stores: [createRedisKeyv(owner)],
-        ttl: owner.config.ttl,
-        nonBlocking: false,
-      }),
+      useFactory: (owner: RedisClient) =>
+        createCache({
+          stores: [createRedisKeyv(owner)],
+          ttl: owner.config.ttl,
+          nonBlocking: false,
+        }),
     },
     CacheService,
     RedisService,

@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@app/database';
-import { parseId } from '@app/common';
 import type {
   LoginLogQueryDto,
   LoginLogResponseDto,
   OperationLogQueryDto,
   OperationLogResponseDto,
 } from '@app/audit';
+import { parseId } from '@app/common';
+import { PrismaService } from '@app/database';
+import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 
 /**
@@ -124,11 +124,9 @@ export class AuditQueryService {
     ]);
 
     return {
-      records: plainToInstance(
-        Object as unknown as new () => OperationLogResponseDto,
-        records,
-        { excludeExtraneousValues: true },
-      ),
+      records: plainToInstance(Object as unknown as new () => OperationLogResponseDto, records, {
+        excludeExtraneousValues: true,
+      }),
       total,
       page,
       pageSize,

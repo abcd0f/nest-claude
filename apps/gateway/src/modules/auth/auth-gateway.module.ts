@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { AuthModule } from '@app/auth';
 import { AuditModule } from '@app/audit';
+import { AuthModule } from '@app/auth';
+import { Module } from '@nestjs/common';
 import { AuthGatewayController } from './auth-gateway.controller.js';
 
 /**

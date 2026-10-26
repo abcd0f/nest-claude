@@ -1,9 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { TokenService, TokenConfig } from './token.service.js';
-import { UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { TokenConfig, TokenService } from './token.service.js';
 
-describe('TokenService', () => {
+describe('tokenService', () => {
   let service: TokenService;
   let jwtService: jest.Mocked<JwtService>;
 
@@ -132,9 +131,7 @@ describe('TokenService', () => {
     });
 
     it('should throw UnauthorizedException for invalid token', async () => {
-      jwtService.verifyAsync.mockRejectedValue(
-        new Error('Invalid token'),
-      );
+      jwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
 
       await expect(service.verifyAccessToken('invalid-token')).rejects.toThrow();
     });

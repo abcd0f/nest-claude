@@ -10,7 +10,8 @@ function deriveKey(key: string): Buffer {
 }
 
 function encrypt(value: unknown, key: string): unknown {
-  if (value === null || value === undefined || typeof value !== 'string' || value === '') return value;
+  if (value === null || value === undefined || typeof value !== 'string' || value === '')
+    return value;
   if (value.startsWith(CIPHERTEXT_PREFIX)) return value;
 
   const nonce = randomBytes(12);
@@ -20,10 +21,13 @@ function encrypt(value: unknown, key: string): unknown {
 }
 
 function decrypt(value: unknown, key: string): unknown {
-  if (value === null || value === undefined || typeof value !== 'string' || value === '') return value;
+  if (value === null || value === undefined || typeof value !== 'string' || value === '')
+    return value;
   if (!value.startsWith(CIPHERTEXT_PREFIX)) return value;
 
-  const [nonceText, tagText, ciphertextText, ...extra] = value.slice(CIPHERTEXT_PREFIX.length).split(':');
+  const [nonceText, tagText, ciphertextText, ...extra] = value
+    .slice(CIPHERTEXT_PREFIX.length)
+    .split(':');
   if (!nonceText || !tagText || ciphertextText === undefined || extra.length > 0) {
     throw new Error('字段密文格式无效');
   }

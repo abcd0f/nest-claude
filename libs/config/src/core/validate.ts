@@ -9,7 +9,10 @@ export interface CompiledConfig {
 
 let compiled: CompiledConfig | undefined;
 
-export function compileConfig(domains: readonly AnyConfigDomain[], snapshot: RawConfigSnapshot): CompiledConfig {
+export function compileConfig(
+  domains: readonly AnyConfigDomain[],
+  snapshot: RawConfigSnapshot,
+): CompiledConfig {
   if (compiled?.snapshot === snapshot) return compiled;
 
   const values = new Map<string, ConfigObject>();

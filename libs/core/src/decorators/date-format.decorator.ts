@@ -10,7 +10,10 @@ dayjs.extend(timezone);
 export const DEFAULT_DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 export const DEFAULT_TIMEZONE = 'Asia/Shanghai';
 
-export function DateFormat(format: string = DEFAULT_DATE_FORMAT, options?: TransformOptions): PropertyDecorator {
+export function DateFormat(
+  format: string = DEFAULT_DATE_FORMAT,
+  options?: TransformOptions,
+): PropertyDecorator {
   return Transform(({ value }: TransformFnParams) => formatDateValue(value, format), options);
 }
 

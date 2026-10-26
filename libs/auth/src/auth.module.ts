@@ -1,6 +1,7 @@
+import type { AuthConfig } from '@app/config';
+import { authConfig } from '@app/config';
 import { CryptoModule } from '@app/crypto';
 import { DatabaseModule } from '@app/database';
-import { authConfig, type AuthConfig } from '@app/config';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
@@ -74,11 +75,7 @@ import { TokenService } from './services/token.service.js';
       }),
     }),
   ],
-  providers: [
-    TokenService,
-    AuthService,
-    AuthGuard,
-  ],
+  providers: [TokenService, AuthService, AuthGuard],
   controllers: [AuthController],
   exports: [AuthService, TokenService, AuthGuard],
 })

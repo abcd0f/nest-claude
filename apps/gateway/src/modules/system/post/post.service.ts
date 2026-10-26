@@ -1,19 +1,14 @@
-import { parseId } from '@app/common/utils/bigint.util.js';
-import { PrismaService } from '@app/database';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-import { paginate, makePageMeta } from '@app/common/utils/page.util.js';
-import { andWhere } from '@app/common/utils/where.util.js';
 import { PageResponseDto } from '@app/common/dto/base.dto.js';
+import { parseId } from '@app/common/utils/bigint.util.js';
+import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
+import { andWhere } from '@app/common/utils/where.util.js';
+import { PrismaService } from '@app/database';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { CreatePostDto } from './dto/create-post.dto.js';
-import { UpdatePostDto } from './dto/update-post.dto.js';
-import { PostResponseDto } from './dto/post-response.dto.js';
 import { ListPostDto } from './dto/list-post.dto.js';
+import { PostResponseDto } from './dto/post-response.dto.js';
+import { UpdatePostDto } from './dto/update-post.dto.js';
 
 /**
  * 职位服务
@@ -140,9 +135,7 @@ export class PostService {
 
         // 检查是否有用户引用
         if (post.users.length > 0) {
-          throw new BadRequestException(
-            `职位 ${postId} 被用户引用，无法删除。请先解除用户关联。`,
-          );
+          throw new BadRequestException(`职位 ${postId} 被用户引用，无法删除。请先解除用户关联。`);
         }
 
         // 删除职位
@@ -169,10 +162,7 @@ export class PostService {
       dto.status ? { status: dto.status } : null,
       dto.search
         ? {
-            OR: [
-              { postCode: { contains: dto.search } },
-              { postName: { contains: dto.search } },
-            ],
+            OR: [{ postCode: { contains: dto.search } }, { postName: { contains: dto.search } }],
           }
         : null,
       { delFlag: '0' },

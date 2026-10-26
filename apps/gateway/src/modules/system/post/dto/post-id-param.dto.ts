@@ -5,6 +5,6 @@ import { IsString, Matches } from 'class-validator';
  */
 export class PostIdParamDto {
   @IsString()
-  @Matches(/^(0|[1-9][0-9]*)$/, { message: 'postId 必须是十进制字符串' })
+  @Matches(/^(0|[1-9]\d*)$/, { message: 'postId 必须是十进制字符串' })
   postId!: string;
 }

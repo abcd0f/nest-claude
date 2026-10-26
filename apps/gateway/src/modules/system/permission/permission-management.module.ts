@@ -1,7 +1,6 @@
+import { PermissionModule as LibPermissionModule, PermissionSyncService } from '@app/permission';
 import { Module } from '@nestjs/common';
-import { PermissionModule as LibPermissionModule } from '@app/permission';
-import { PermissionManagementController } from './permission-management.controller';
-import { PermissionSyncService } from '@app/permission/services/permission-sync.service';
+import { PermissionManagementController } from './permission-management.controller.js';
 
 /**
  * 权限管理模块

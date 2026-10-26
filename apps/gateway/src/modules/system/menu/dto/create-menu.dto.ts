@@ -5,7 +5,7 @@ import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'clas
  */
 export class CreateMenuDto {
   @IsString()
-  @Matches(/^(0|[1-9][0-9]*)$/, { message: 'parentId 必须是十进制字符串' })
+  @Matches(/^(0|[1-9]\d*)$/, { message: 'parentId 必须是十进制字符串' })
   parentId!: string;
 
   @IsString()

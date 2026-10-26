@@ -1,3 +1,5 @@
+import { AuditModule } from '@app/audit';
+import { AuthModule } from '@app/auth';
 import { CacheModule } from '@app/cache';
 import { AppConfigModule } from '@app/config';
 import { CoreModule } from '@app/core';
@@ -5,13 +7,11 @@ import { CryptoModule } from '@app/crypto';
 import { DatabaseModule } from '@app/database';
 import { LoggerModule } from '@app/logger';
 import { SwaggerModule } from '@app/swagger';
-import { AuditModule } from '@app/audit';
-import { AuthModule } from '@app/auth';
 import { Module } from '@nestjs/common';
 
 import { AppController } from './app.controller.js';
-import { SystemModule } from './modules/system/system.module.js';
 import { AuthGatewayModule } from './modules/auth/auth-gateway.module.js';
+import { SystemModule } from './modules/system/system.module.js';
 
 @Module({
   imports: [

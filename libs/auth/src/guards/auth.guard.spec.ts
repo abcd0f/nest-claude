@@ -1,13 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthGuard } from './auth.guard.js';
-import { TokenService } from '../services/token.service.js';
+import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from '../auth.service.js';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
+import { TokenService } from '../services/token.service.js';
 import { UserPrincipal } from '../types/user-principal.type.js';
+import { AuthGuard } from './auth.guard.js';
 
-describe('AuthGuard', () => {
+describe('authGuard', () => {
   let guard: AuthGuard;
   let reflector: jest.Mocked<Reflector>;
   let tokenService: jest.Mocked<TokenService>;
@@ -71,18 +70,19 @@ describe('AuthGuard', () => {
   });
 
   describe('canActivate', () => {
-    const createMockExecutionContext = (overrides = {}): ExecutionContext => ({
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue({
-          headers: {
-            authorization: 'Bearer valid-token',
-          },
-          ...overrides,
+    const createMockExecutionContext = (overrides = {}): ExecutionContext =>
+      ({
+        switchToHttp: jest.fn().mockReturnValue({
+          getRequest: jest.fn().mockReturnValue({
+            headers: {
+              authorization: 'Bearer valid-token',
+            },
+            ...overrides,
+          }),
         }),
-      }),
-      getHandler: jest.fn(),
-      getClass: jest.fn(),
-    } as any);
+        getHandler: jest.fn(),
+        getClass: jest.fn(),
+      }) as any;
 
     it('should allow public routes', async () => {
       const context = createMockExecutionContext();
@@ -100,9 +100,7 @@ describe('AuthGuard', () => {
       });
       reflector.getAllAndOverride.mockReturnValue(false);
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for invalid Bearer format', async () => {
@@ -113,9 +111,7 @@ describe('AuthGuard', () => {
       });
       reflector.getAllAndOverride.mockReturnValue(false);
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should authenticate valid token', async () => {
@@ -137,13 +133,9 @@ describe('AuthGuard', () => {
     it('should throw UnauthorizedException for invalid token', async () => {
       const context = createMockExecutionContext();
       reflector.getAllAndOverride.mockReturnValue(false);
-      tokenService.verifyAccessToken.mockRejectedValue(
-        new Error('Invalid token'),
-      );
+      tokenService.verifyAccessToken.mockRejectedValue(new Error('Invalid token'));
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for non-existent user', async () => {
@@ -152,9 +144,7 @@ describe('AuthGuard', () => {
       tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
       authService.getCurrentUser.mockResolvedValue(null);
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for disabled user', async () => {
@@ -164,9 +154,7 @@ describe('AuthGuard', () => {
       tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
       authService.getCurrentUser.mockResolvedValue(disabledUser);
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for deleted user', async () => {
@@ -176,9 +164,7 @@ describe('AuthGuard', () => {
       tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
       authService.getCurrentUser.mockResolvedValue(deletedUser);
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
   });
 });

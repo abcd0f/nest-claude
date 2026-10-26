@@ -1,20 +1,15 @@
-import { parseId } from '@app/common/utils/bigint.util.js';
-import { PrismaService } from '@app/database';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-import { paginate, makePageMeta } from '@app/common/utils/page.util.js';
-import { andWhere } from '@app/common/utils/where.util.js';
 import { PageResponseDto } from '@app/common/dto/base.dto.js';
-import { CreateRoleDto } from './dto/create-role.dto.js';
-import { UpdateRoleDto } from './dto/update-role.dto.js';
-import { RoleResponseDto } from './dto/role-response.dto.js';
-import { ListRoleDto } from './dto/list-role.dto.js';
+import { parseId } from '@app/common/utils/bigint.util.js';
+import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
+import { andWhere } from '@app/common/utils/where.util.js';
+import { PrismaService } from '@app/database';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { MenuService } from '../menu/menu.service.js';
+import { CreateRoleDto } from './dto/create-role.dto.js';
+import { ListRoleDto } from './dto/list-role.dto.js';
+import { RoleResponseDto } from './dto/role-response.dto.js';
+import { UpdateRoleDto } from './dto/update-role.dto.js';
 
 /**
  * 角色服务
@@ -148,9 +143,7 @@ export class RoleService {
 
         // 检查是否有用户引用
         if (role.users.length > 0) {
-          throw new BadRequestException(
-            `角色 ${roleId} 被用户引用，无法删除。请先解除用户关联。`,
-          );
+          throw new BadRequestException(`角色 ${roleId} 被用户引用，无法删除。请先解除用户关联。`);
         }
 
         // 删除角色菜单关联
@@ -186,10 +179,7 @@ export class RoleService {
       dto.status ? { status: dto.status } : null,
       dto.search
         ? {
-            OR: [
-              { roleName: { contains: dto.search } },
-              { roleKey: { contains: dto.search } },
-            ],
+            OR: [{ roleName: { contains: dto.search } }, { roleKey: { contains: dto.search } }],
           }
         : null,
       { delFlag: '0' },

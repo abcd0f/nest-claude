@@ -1,5 +1,14 @@
 import type { ApiDecryptConfig } from '@app/config';
-import { constants, createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, privateDecrypt, publicEncrypt, randomBytes } from 'node:crypto';
+import {
+  constants,
+  createCipheriv,
+  createDecipheriv,
+  createPrivateKey,
+  createPublicKey,
+  privateDecrypt,
+  publicEncrypt,
+  randomBytes,
+} from 'node:crypto';
 import { Readable } from 'node:stream';
 import { BASE64_PATTERN } from '@app/common/constants/regex.js';
 
@@ -48,7 +57,8 @@ export class ApiCryptoService {
     const aesKey = decodeBase64(encodedAesKey);
     const algorithm = this.aesAlgorithm(aesKey);
     const ciphertext = decodeBase64(encryptedBody.toString('utf8').trim());
-    if (ciphertext.length === 0 || ciphertext.length % 16 !== 0) throw new Error('invalid AES ciphertext');
+    if (ciphertext.length === 0 || ciphertext.length % 16 !== 0)
+      throw new Error('invalid AES ciphertext');
 
     const decipher = createDecipheriv(algorithm, aesKey, null);
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
@@ -72,7 +82,11 @@ export class ApiCryptoService {
     return { body: encryptedBody, encryptedKey };
   }
 
-  async decryptStream(encryptedKey: string, payload: AsyncIterable<Uint8Array>, maxBytes: number): Promise<Readable> {
+  async decryptStream(
+    encryptedKey: string,
+    payload: AsyncIterable<Uint8Array>,
+    maxBytes: number,
+  ): Promise<Readable> {
     const chunks: Buffer[] = [];
     let total = 0;
     for await (const chunk of payload) {

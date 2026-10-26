@@ -5,6 +5,6 @@ import { IsString, Matches } from 'class-validator';
  */
 export class UserIdParamDto {
   @IsString()
-  @Matches(/^(0|[1-9][0-9]*)$/, { message: 'userId 必须是十进制字符串' })
+  @Matches(/^(0|[1-9]\d*)$/, { message: 'userId 必须是十进制字符串' })
   userId!: string;
 }

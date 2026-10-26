@@ -1,5 +1,5 @@
 import type { PermissionMetadata } from '../types/permission-metadata.type.js';
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Mode } from '../enums/mode.enum.js';
 import { Permission, PERMISSION_KEY } from './permission.decorator.js';

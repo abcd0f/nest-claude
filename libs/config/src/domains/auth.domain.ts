@@ -1,4 +1,10 @@
-import { asBoolean, asObject, asStrictInteger, asString, defineConfigDomain } from '../core/index.js';
+import {
+  asBoolean,
+  asObject,
+  asStrictInteger,
+  asString,
+  defineConfigDomain,
+} from '../core/index.js';
 
 /**
  * 认证配置
@@ -70,10 +76,19 @@ export const authDomain = defineConfigDomain<AuthConfig>({
         'CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET',
       ),
       accessTokenTtl: asStrictInteger(value['access-token-ttl'], 'auth.access-token-ttl', 1800, 60),
-      refreshTokenTtl: asStrictInteger(value['refresh-token-ttl'], 'auth.refresh-token-ttl', 604800, 86400),
+      refreshTokenTtl: asStrictInteger(
+        value['refresh-token-ttl'],
+        'auth.refresh-token-ttl',
+        604800,
+        86400,
+      ),
       issuer: asString(value.issuer, 'auth.issuer', 'nest-admin'),
       audience: asString(value.audience, 'auth.audience', 'nest-admin'),
-      refreshTokenRotation: asBoolean(value['refresh-token-rotation'], 'auth.refresh-token-rotation', true),
+      refreshTokenRotation: asBoolean(
+        value['refresh-token-rotation'],
+        'auth.refresh-token-rotation',
+        true,
+      ),
       passwordResetTokenTtl: asStrictInteger(
         value['password-reset-token-ttl'],
         'auth.password-reset-token-ttl',

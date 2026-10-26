@@ -1,23 +1,23 @@
+import { PageResponseDto } from '@app/common/dto/base.dto.js';
+import { Permission } from '@app/permission';
 import {
   Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
   Query,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
-import { Permission } from '@app/permission';
-import { PageResponseDto } from '@app/common/dto/base.dto.js';
-import { PostService } from './post.service.js';
 import { CreatePostDto } from './dto/create-post.dto.js';
-import { UpdatePostDto } from './dto/update-post.dto.js';
+import { ListPostDto } from './dto/list-post.dto.js';
 import { PostIdParamDto } from './dto/post-id-param.dto.js';
 import { PostResponseDto } from './dto/post-response.dto.js';
-import { ListPostDto } from './dto/list-post.dto.js';
+import { UpdatePostDto } from './dto/update-post.dto.js';
+import { PostService } from './post.service.js';
 
 /**
  * 职位管理控制器

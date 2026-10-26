@@ -14,8 +14,13 @@ import { LoggerService } from './logger.service.js';
 describe('nest 日志桥接与生命周期', () => {
   it('原有 Nest Logger 自动写入两个文件，app.close 前的最后一条错误落盘', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'nest-logger-bridge-'));
-    const config = loggerDomain.parse({ console: { enabled: false }, file: { directory } }, { environment: 'test' });
-    const module = await Test.createTestingModule({ imports: [AppConfigModule.forRoot(), LoggerModule] })
+    const config = loggerDomain.parse(
+      { console: { enabled: false }, file: { directory } },
+      { environment: 'test' },
+    );
+    const module = await Test.createTestingModule({
+      imports: [AppConfigModule.forRoot(), LoggerModule],
+    })
       .overrideProvider(loggerConfig.KEY)
       .useValue(config)
       .compile();

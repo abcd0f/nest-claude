@@ -18,6 +18,6 @@ describe('分页查询 DTO', () => {
 
   it.each([0, 201, 1.5, 'invalid'])('拒绝非法页大小 %s', (pageSize) => {
     const errors = validateSync(plainToInstance(PageQueryDto, { pageSize }));
-    expect(errors.map(error => error.property)).toEqual(['pageSize']);
+    expect(errors.map((error) => error.property)).toEqual(['pageSize']);
   });
 });

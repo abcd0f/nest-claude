@@ -28,7 +28,16 @@ export const DOMAINS = [
   redisDomain,
 ] as const;
 
-export { apiDecryptConfig, appConfig, authConfig, databaseConfig, loggerConfig, redisConfig, swaggerConfig, throttlerConfig };
+export {
+  apiDecryptConfig,
+  appConfig,
+  authConfig,
+  databaseConfig,
+  loggerConfig,
+  redisConfig,
+  swaggerConfig,
+  throttlerConfig,
+};
 
 export type { ApiDecryptConfig } from './api-decrypt.domain.js';
 export type { AppConfig, NodeEnv } from './app.domain.js';

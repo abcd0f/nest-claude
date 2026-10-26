@@ -60,60 +60,66 @@ export class RedisService {
   }
 
   get(key: string): Promise<string | null> {
-    return this.execute(client => client.get(this.key(key)));
+    return this.execute((client) => client.get(this.key(key)));
   }
 
   async set(key: string, value: string, ttl = this.redis.config.ttl): Promise<void> {
     assertTtl(ttl);
-    await this.execute(client => client.set(
-      this.key(key),
-      value,
-      ttl === 0 ? undefined : { expiration: { type: 'PX', value: ttl } },
-    ));
+    await this.execute((client) =>
+      client.set(
+        this.key(key),
+        value,
+        ttl === 0 ? undefined : { expiration: { type: 'PX', value: ttl } },
+      ),
+    );
   }
 
   /** SET NX PX 原子占位，适合幂等标记；失败不会覆盖值或重置 TTL。 */
   async setIfAbsent(key: string, value: string, ttl: number): Promise<boolean> {
     assertTtl(ttl, false);
     return (
-      (await this.execute(client => client.set(this.key(key), value, {
-        condition: 'NX',
-        expiration: { type: 'PX', value: ttl },
-      }))) === 'OK'
+      (await this.execute((client) =>
+        client.set(this.key(key), value, {
+          condition: 'NX',
+          expiration: { type: 'PX', value: ttl },
+        }),
+      )) === 'OK'
     );
   }
 
   /** GETDEL 原子取走一次性令牌/验证码，避免并发重复消费。 */
   consume(key: string): Promise<string | null> {
-    return this.execute(client => client.getDel(this.key(key)));
+    return this.execute((client) => client.getDel(this.key(key)));
   }
 
   async del(...keys: string[]): Promise<number> {
     if (!keys.length) return 0;
-    return this.execute(client => client.unlink(keys.map((key) => this.key(key))));
+    return this.execute((client) => client.unlink(keys.map((key) => this.key(key))));
   }
 
   ttl(key: string): Promise<number> {
-    return this.execute(client => client.pTTL(this.key(key)));
+    return this.execute((client) => client.pTTL(this.key(key)));
   }
 
   async expire(key: string, ttl: number): Promise<boolean> {
     assertTtl(ttl, false);
-    return (await this.execute(client => client.pExpire(this.key(key), ttl))) === 1;
+    return (await this.execute((client) => client.pExpire(this.key(key), ttl))) === 1;
   }
 
   deleteByPrefix(prefix: string): Promise<number> {
-    return this.execute(client => deleteByPrefix(client, this.key(prefix)));
+    return this.execute((client) => deleteByPrefix(client, this.key(prefix)));
   }
 
   /** 原子计数并在首次写入时设置窗口，后续递增不延长 TTL，适合登录失败计数/固定窗口限流。 */
   async increment(key: string, ttl: number, amount = 1): Promise<{ value: number; ttl: number }> {
     assertTtl(ttl, false);
     if (!Number.isSafeInteger(amount) || amount < 1) throw new TypeError('amount 必须是正安全整数');
-    const result = (await this.execute(client => client.eval(INCREMENT, {
-      keys: [this.key(key)],
-      arguments: [String(amount), String(ttl)],
-    }))) as [number, number];
+    const result = (await this.execute((client) =>
+      client.eval(INCREMENT, {
+        keys: [this.key(key)],
+        arguments: [String(amount), String(ttl)],
+      }),
+    )) as [number, number];
     return { value: result[0], ttl: result[1] };
   }
 
@@ -122,21 +128,27 @@ export class RedisService {
     assertTtl(ttl, false);
     const lockKey = `${this.redis.config.keyPrefix}:lock:${key}`;
     const token = randomUUID();
-    const result = await this.execute(client => client.set(lockKey, token, {
-      condition: 'NX',
-      expiration: { type: 'PX', value: ttl },
-    }));
+    const result = await this.execute((client) =>
+      client.set(lockKey, token, {
+        condition: 'NX',
+        expiration: { type: 'PX', value: ttl },
+      }),
+    );
     if (result !== 'OK') return undefined;
     return {
       release: async () =>
-        (await this.execute(client => client.eval(RELEASE, { keys: [lockKey], arguments: [token] }))) === 1,
+        (await this.execute((client) =>
+          client.eval(RELEASE, { keys: [lockKey], arguments: [token] }),
+        )) === 1,
       extend: async (leaseTtl) => {
         assertTtl(leaseTtl, false);
         return (
-          (await this.execute(client => client.eval(EXTEND, {
-            keys: [lockKey],
-            arguments: [token, String(leaseTtl)],
-          }))) === 1
+          (await this.execute((client) =>
+            client.eval(EXTEND, {
+              keys: [lockKey],
+              arguments: [token, String(leaseTtl)],
+            }),
+          )) === 1
         );
       },
     };

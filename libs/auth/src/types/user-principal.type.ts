@@ -124,12 +124,12 @@ export function hasPermission(user: UserPrincipal, permissionCode: string): bool
  * 检查用户是否拥有指定权限列表中的任意一个
  */
 export function hasAnyPermission(user: UserPrincipal, permissionCodes: string[]): boolean {
-  return permissionCodes.some(code => user.permissionCodes.has(code));
+  return permissionCodes.some((code) => user.permissionCodes.has(code));
 }
 
 /**
  * 检查用户是否同时拥有指定的所有权限
  */
 export function hasAllPermissions(user: UserPrincipal, permissionCodes: string[]): boolean {
-  return permissionCodes.every(code => user.permissionCodes.has(code));
+  return permissionCodes.every((code) => user.permissionCodes.has(code));
 }

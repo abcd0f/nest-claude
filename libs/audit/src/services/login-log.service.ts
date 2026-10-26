@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '@app/database';
 import type { LoginAuditContext } from '../types/index.js';
+import { PrismaService } from '@app/database';
+import { Injectable, Logger } from '@nestjs/common';
 
 /**
  * 登录日志服务
@@ -50,7 +50,12 @@ export class LoginLogService {
   /**
    * 记录登录失败
    */
-  async logFailure(userName: string, ipaddr: string, userAgent: string, reason: string): Promise<void> {
+  async logFailure(
+    userName: string,
+    ipaddr: string,
+    userAgent: string,
+    reason: string,
+  ): Promise<void> {
     await this.log({
       userName,
       ipaddr,

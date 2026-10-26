@@ -6,7 +6,9 @@ import { supportsEncryptedRequest } from './api-crypto-policy.js';
 import { ApiCryptoService } from './api-crypto.service.js';
 import { API_ENCRYPT_RESPONSE } from './api-encrypt.decorator.js';
 
-type FastifyInstance = ReturnType<ReturnType<NestFastifyApplication['getHttpAdapter']>['getInstance']>;
+type FastifyInstance = ReturnType<
+  ReturnType<NestFastifyApplication['getHttpAdapter']>['getInstance']
+>;
 
 const EMPTY_BODY = Readable.from([]);
 
@@ -20,7 +22,11 @@ export function installApiCryptoHooks(
 
   fastify.addHook('preParsing', async (request, reply, payload) => {
     const encryptedKey = request.headers[config.headerFlag.toLowerCase()];
-    if (!supportsEncryptedRequest(request.method) || typeof encryptedKey !== 'string' || !encryptedKey) {
+    if (
+      !supportsEncryptedRequest(request.method) ||
+      typeof encryptedKey !== 'string' ||
+      !encryptedKey
+    ) {
       return payload;
     }
 

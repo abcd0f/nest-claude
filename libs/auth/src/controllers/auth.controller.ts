@@ -1,18 +1,10 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Headers,
-  HttpCode,
-  Logger,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Body, Controller, Get, Headers, HttpCode, Logger, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from '../auth.service.js';
-import { LoginDto } from '../dto/login.dto.js';
-import { LoginResultDto, TokenDto } from '../dto/login-result.dto.js';
-import { Public } from '../decorators/public.decorator.js';
 import { CurrentUser } from '../decorators/current-user.decorator.js';
+import { Public } from '../decorators/public.decorator.js';
+import { LoginResultDto, TokenDto } from '../dto/login-result.dto.js';
+import { LoginDto } from '../dto/login.dto.js';
 import { UserPrincipal } from '../types/user-principal.type.js';
 
 /**
@@ -86,15 +78,11 @@ export class AuthController {
     // 优先使用 X-Forwarded-For（来自代理），其次用 user-agent 做日志
     const clientIp = xForwardedFor?.split(',')[0]?.trim();
 
-    this.logger.debug(
-      `Login attempt for user: ${dto.username} from IP: ${clientIp}`,
-    );
+    this.logger.debug(`Login attempt for user: ${dto.username} from IP: ${clientIp}`);
 
     const result = await this.authService.login(dto, clientIp);
 
-    this.logger.log(
-      `User login successful: ${result.userId} (${result.username})`,
-    );
+    this.logger.log(`User login successful: ${result.userId} (${result.username})`);
 
     return result;
   }
@@ -160,9 +148,7 @@ export class AuthController {
     status: 401,
     description: '刷新令牌无效或已过期',
   })
-  async refreshToken(
-    @Body('refreshToken') refreshToken: string,
-  ): Promise<TokenDto> {
+  async refreshToken(@Body('refreshToken') refreshToken: string): Promise<TokenDto> {
     if (!refreshToken || typeof refreshToken !== 'string') {
       throw new Error('Missing or invalid refreshToken');
     }
@@ -248,13 +234,9 @@ export class AuthController {
     status: 401,
     description: '未认证',
   })
-  async getPermissions(
-    @CurrentUser() user: UserPrincipal,
-  ): Promise<{ permissions: string[] }> {
+  async getPermissions(@CurrentUser() user: UserPrincipal): Promise<{ permissions: string[] }> {
     const permissions = Array.from(user.permissionCodes);
-    this.logger.debug(
-      `Retrieved ${permissions.length} permissions for user: ${user.userId}`,
-    );
+    this.logger.debug(`Retrieved ${permissions.length} permissions for user: ${user.userId}`);
     return { permissions };
   }
 }

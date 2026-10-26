@@ -47,7 +47,12 @@ export function asBoolean(value: unknown, path: string, fallback?: boolean): boo
   return fail(path, '只能是 true 或 false');
 }
 
-export function asInteger(value: unknown, path: string, fallback: number | undefined, min: number): number {
+export function asInteger(
+  value: unknown,
+  path: string,
+  fallback: number | undefined,
+  min: number,
+): number {
   if (isAbsent(value)) {
     if (fallback !== undefined) return fallback;
     return fail(path, '必须是整数');

@@ -41,24 +41,27 @@ describe('paginate', () => {
     { query: { page: 2, pageSize: 999999 }, total: 401, page: 2, pageSize: 200, totalPage: 3 },
     { query: { pageSize: 201 }, total: 201, page: 1, pageSize: 200, totalPage: 2 },
     { query: { page: 5, pageSize: 10 }, total: 21, page: 5, pageSize: 10, totalPage: 3 },
-  ])('按有效分页参数返回元数据：$query，total=$total', async ({ query, total, page, pageSize, totalPage }) => {
-    const delegate = {
-      findMany: vi.fn().mockResolvedValue([]),
-      count: vi.fn().mockResolvedValue(total),
-    };
+  ])(
+    '按有效分页参数返回元数据：$query，total=$total',
+    async ({ query, total, page, pageSize, totalPage }) => {
+      const delegate = {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(total),
+      };
 
-    expect(await paginate(delegate, query)).toEqual({
-      items: [],
-      meta: { page, pageSize, total, totalPage },
-    });
-    expect(delegate.findMany).toHaveBeenCalledExactlyOnceWith({
-      where: undefined,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy: { createTime: 'desc' },
-    });
-    expect(delegate.count).toHaveBeenCalledExactlyOnceWith({ where: undefined });
-  });
+      expect(await paginate(delegate, query)).toEqual({
+        items: [],
+        meta: { page, pageSize, total, totalPage },
+      });
+      expect(delegate.findMany).toHaveBeenCalledExactlyOnceWith({
+        where: undefined,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createTime: 'desc' },
+      });
+      expect(delegate.count).toHaveBeenCalledExactlyOnceWith({ where: undefined });
+    },
+  );
 
   it('保留 omit 和排序字段转换', async () => {
     const delegate = {
@@ -80,9 +83,9 @@ describe('paginate', () => {
   it('同时传入 select 和 omit 时不执行查询', async () => {
     const delegate = { findMany: vi.fn(), count: vi.fn() };
 
-    await expect(paginate(delegate, { select: { userId: true }, omit: { password: true } }))
-      .rejects
-      .toThrow('Cannot use both "select" and "omit" at the same time');
+    await expect(
+      paginate(delegate, { select: { userId: true }, omit: { password: true } }),
+    ).rejects.toThrow('Cannot use both "select" and "omit" at the same time');
     expect(delegate.findMany).not.toHaveBeenCalled();
     expect(delegate.count).not.toHaveBeenCalled();
   });

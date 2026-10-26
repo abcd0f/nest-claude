@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
 import { DatabaseModule } from '@app/database';
-import { AuditQueryService } from './services/audit-query.service.js';
+import { Module } from '@nestjs/common';
 import { LoginLogController } from './controllers/login-log.controller.js';
 import { OperationLogController } from './controllers/operation-log.controller.js';
+import { AuditQueryService } from './services/audit-query.service.js';
 
 /**
  * 审计查询模块

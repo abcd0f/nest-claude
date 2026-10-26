@@ -22,9 +22,12 @@ describe('api 请求加密方法策略', () => {
     expect(guard.canActivate(contextFor(method, { 'encrypt-key': 'encrypted key' }))).toBe(true);
   });
 
-  it.each(['GET', 'DELETE', 'PATCH', 'get', 'delete', 'patch'])('%s 不要求请求加密，仍可以开启响应加密', (method) => {
-    const context = contextFor(method);
-    expect(guard.canActivate(context)).toBe(true);
-    expect(context.switchToHttp().getRequest()[API_ENCRYPT_RESPONSE]).toBe(true);
-  });
+  it.each(['GET', 'DELETE', 'PATCH', 'get', 'delete', 'patch'])(
+    '%s 不要求请求加密，仍可以开启响应加密',
+    (method) => {
+      const context = contextFor(method);
+      expect(guard.canActivate(context)).toBe(true);
+      expect(context.switchToHttp().getRequest()[API_ENCRYPT_RESPONSE]).toBe(true);
+    },
+  );
 });
