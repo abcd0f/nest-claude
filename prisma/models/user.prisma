@@ -9,6 +9,8 @@ model User {
   userName           String    @map("user_name") @db.VarChar(64)
   /// 用户昵称
   nickName           String    @map("nick_name") @db.VarChar(100)
+  /// 用户头像
+  avatar             String?   @db.VarChar(255)
   /// 用户邮箱
   email              String?   @db.VarChar(254)
   /// 用户手机号

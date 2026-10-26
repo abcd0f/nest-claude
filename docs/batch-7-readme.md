@@ -261,7 +261,7 @@ DATABASE_URL=postgresql://user:password@host:port/database
 const DEFAULT_SUPERADMIN = {
   username: 'admin',
   password: 'Admin@123456',
-  realName: '超级管理员',
+  nickName: '超级管理员',
   email: 'admin@example.com',
 };
 ```

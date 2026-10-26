@@ -20,10 +20,10 @@ export interface UserPrincipal {
   username: string;
 
   /**
-   * 真实姓名
-   * 对应 sys_user.real_name
+   * 昵称
+   * 对应 sys_user.nick_name
    */
-  realName: string;
+  nickName: string;
 
   /**
    * 部门 ID（可选）

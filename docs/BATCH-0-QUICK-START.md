@@ -9,23 +9,25 @@
 ## 🎯 核心交付物
 
 ### 1. BigInt 工具函数库
+
 **文件**: `libs/common/src/utils/bigint.util.ts`
 
 ```ts
 // 单个 ID 解析
-const userId = parseId('123', 'userId');  // bigint
+const userId = parseId('123', 'userId'); // bigint
 
 // 单个 ID 格式化
-const idStr = formatId(userId);           // string
+const idStr = formatId(userId); // string
 
 // 批量 ID 解析
-const ids = parseIds(['1', '2', '3']);    // bigint[]
+const ids = parseIds(['1', '2', '3']); // bigint[]
 
 // 批量 ID 格式化
-const strs = formatIds([1n, 2n, 3n]);     // string[]
+const strs = formatIds([1n, 2n, 3n]); // string[]
 ```
 
 ### 2. 基础 DTO 类
+
 **文件**: `libs/common/src/dto/`
 
 ```ts
@@ -52,7 +54,10 @@ export class IdsBodyDto {
 
 ```ts
 // 权限判定模式
-enum Mode { AND = 'AND', OR = 'OR' }
+enum Mode {
+  AND = 'AND',
+  OR = 'OR',
+}
 
 // 数据范围
 enum DataScope {
@@ -72,7 +77,7 @@ enum DataScope {
 interface UserPrincipal {
   userId: bigint;
   username: string;
-  realName: string;
+  nickName: string;
   deptId: bigint | null;
   roleKeys: string[];
   permissionCodes: Set<string>;
@@ -85,11 +90,11 @@ interface UserPrincipal {
 }
 
 // 辅助函数
-isUserValid(user)
-hasRole(user, 'admin')
-hasPermission(user, 'user:view')
-hasAnyPermission(user, ['user:view', 'user:edit'])
-hasAllPermissions(user, ['user:view', 'user:edit'])
+isUserValid(user);
+hasRole(user, 'admin');
+hasPermission(user, 'user:view');
+hasAnyPermission(user, ['user:view', 'user:edit']);
+hasAllPermissions(user, ['user:view', 'user:edit']);
 ```
 
 ### 5. JWT 配置 ADR
@@ -97,6 +102,7 @@ hasAllPermissions(user, ['user:view', 'user:edit'])
 **文件**: `docs/adr/jwt-configuration.md`
 
 关键决策：
+
 - JWT 算法: HS256（HMAC SHA-256）
 - Access Token TTL: 15 分钟
 - Refresh Token TTL: 7 天
@@ -127,7 +133,7 @@ export class UserController {
   @Delete()
   @Permission({
     value: ['system:user:remove', 'system:user:admin'],
-    mode: Mode.OR
+    mode: Mode.OR,
   })
   async deleteMany(@Body() body: IdsBodyDto) {
     const userIds = parseIds(body.ids, 'userIds');
@@ -154,10 +160,14 @@ export class UserController {
 ### Service 中的使用
 
 ```ts
-import { 
-  parseId, formatId, parseIds,
+import {
+  parseId,
+  formatId,
+  parseIds,
   UserPrincipal,
-  Mode, DataScope, RESERVED_ROLES 
+  Mode,
+  DataScope,
+  RESERVED_ROLES,
 } from '@app/auth';
 import { isSuperAdmin } from '@app/permission';
 
@@ -190,7 +200,7 @@ export class UserService {
 
   async checkDataScope(
     actor: UserPrincipal,
-    scope: ResolvedDataScope
+    scope: ResolvedDataScope,
   ): Promise<Prisma.UserWhereInput> {
     switch (scope.kind) {
       case DataScope.ALL:
@@ -253,14 +263,7 @@ docs/
 ### 从 @app/common 导入
 
 ```ts
-import {
-  IdParamDto,
-  IdsBodyDto,
-  parseId,
-  formatId,
-  parseIds,
-  formatIds,
-} from '@app/common';
+import { IdParamDto, IdsBodyDto, parseId, formatId, parseIds, formatIds } from '@app/common';
 ```
 
 ### 从 @app/auth 导入
@@ -303,6 +306,7 @@ npm run test libs/common/src/utils/bigint.util.spec.ts
 ```
 
 **测试覆盖**:
+
 - ✅ 有效十进制字符串
 - ✅ 无效格式拒绝
 - ✅ 超大 BigInt
@@ -316,15 +320,16 @@ npm run test libs/common/src/utils/bigint.util.spec.ts
 
 ### BigInt 使用规则
 
-| 边界 | 类型 | 注意事项 |
-|------|------|---------|
+| 边界      | 类型     | 注意事项                       |
+| --------- | -------- | ------------------------------ |
 | HTTP 入参 | `string` | 必须通过 `parseId` 转为 BigInt |
 | HTTP 出参 | `string` | 必须通过 `formatId` 转为字符串 |
-| Service | `bigint` | 内部统一使用 BigInt |
-| Prisma | `bigint` | Prisma schema 使用 BigInt |
-| JWT | `string` | sub/sid 都用字符串 |
+| Service   | `bigint` | 内部统一使用 BigInt            |
+| Prisma    | `bigint` | Prisma schema 使用 BigInt      |
+| JWT       | `string` | sub/sid 都用字符串             |
 
 ❌ **禁止**:
+
 - 不要在 HTTP 中使用 `number` 类型
 - 不要把 BigInt 放入 JSON.stringify
 - 不要在 Prisma 中使用 `number`
@@ -403,6 +408,6 @@ npm run test libs/common/src/utils/bigint.util.spec.ts
 
 ---
 
-**批次 0 完成**: 2025-01-17 ✅  
-**下一步**: 批次 1（数据库迁移）  
+**批次 0 完成**: 2025-01-17 ✅
+**下一步**: 批次 1（数据库迁移）
 **预计时间**: 2-3 天

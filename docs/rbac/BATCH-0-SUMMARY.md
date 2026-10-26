@@ -1,7 +1,7 @@
 # 批次 0（环境准备）- 完成总结
 
-**完成日期**: 2025-01-17  
-**项目**: NestJS 12 + Prisma 7 企业级 RBAC 权限系统  
+**完成日期**: 2025-01-17
+**项目**: NestJS 12 + Prisma 7 企业级 RBAC 权限系统
 **技术栈**: NestJS 12 + Fastify + Prisma 7 + PostgreSQL
 
 ---
@@ -11,6 +11,7 @@
 ### ✅ 已完成项目
 
 #### 1. 依赖管理
+
 - ✅ 规划添加 `@nestjs/jwt` 依赖（需要 npm/pnpm 环境）
 - ✅ 确认现有依赖兼容性：
   - `@nestjs/config` v12.0.1
@@ -19,10 +20,11 @@
   - `class-transformer` v0.5.1
 
 #### 2. 模块目录结构
+
 - ✅ `libs/common/src/` - 通用工具库
   - ✅ `utils/bigint.util.ts` - BigInt 解析/转换工具
   - ✅ `dto/` - 基础 DTO 定义
-  
+
 - ✅ `libs/auth/src/` - 认证模块
   - ✅ `types/user-principal.type.ts` - 用户主体类型
 
@@ -38,12 +40,14 @@
 **文件**: `libs/common/src/utils/bigint.util.ts`
 
 **核心函数**:
+
 - `parseId(value, field)` - 字符串 → BigInt
 - `formatId(value)` - BigInt → 字符串
 - `parseIds(values, field)` - 字符串数组 → BigInt 数组
 - `formatIds(values)` - BigInt 数组 → 字符串数组
 
 **特性**:
+
 - ✅ 严格的十进制格式验证（正则: `/^(0|[1-9][0-9]*)$/`）
 - ✅ 拒绝前导零、负数、非数字字符
 - ✅ 支持 PostgreSQL BIGINT 完整范围
@@ -51,6 +55,7 @@
 - ✅ 详细的错误消息
 
 **使用示例**:
+
 ```ts
 // 在 DTO 中使用验证
 @IsString()
@@ -65,17 +70,20 @@ return { userId: formatId(result.userId) };
 
 #### 4. 基础 DTO 定义
 
-**文件**: 
+**文件**:
+
 - `libs/common/src/dto/id-param.dto.ts`
 - `libs/common/src/dto/ids-body.dto.ts`
 
 **DTO 类**:
+
 - `IdParamDto` - 单个 ID 路径参数
 - `IdParamBaseDto` - 可继承的基类
 - `IdsBodyDto` - 批量 ID 请求体
 - `IdsBodyBaseDto` - 可继承的基类
 
 **验证规则**:
+
 - ✅ `@IsString()` - 字符串类型检查
 - ✅ `@Matches()` - 十进制格式验证
 - ✅ `@IsArray()` - 数组类型检查
@@ -84,34 +92,38 @@ return { userId: formatId(result.userId) };
 #### 5. 权限系统的枚举和类型
 
 **权限判定模式 (`Mode` enum)**:
+
 ```ts
 enum Mode {
-  AND = 'AND',  // 全部权限必须满足
-  OR = 'OR',    // 至少一个权限满足
+  AND = 'AND', // 全部权限必须满足
+  OR = 'OR', // 至少一个权限满足
 }
 ```
 
 **数据范围 (`DataScope` enum)**:
+
 ```ts
 enum DataScope {
-  ALL = '1',              // 全部数据
-  DEPT = '2',             // 本部门
-  DEPT_AND_CHILD = '3',   // 本部门及以下
-  SELF = '4',             // 仅本人
-  CUSTOM = '5',           // 自定义部门
+  ALL = '1', // 全部数据
+  DEPT = '2', // 本部门
+  DEPT_AND_CHILD = '3', // 本部门及以下
+  SELF = '4', // 仅本人
+  CUSTOM = '5', // 自定义部门
 }
 ```
 
 **权限元数据类型**:
+
 ```ts
 interface PermissionMetadata {
-  value: readonly string[];  // 权限编码列表
-  mode: Mode;                // AND/OR 模式
-  role?: string;             // 可选的角色兜底
+  value: readonly string[]; // 权限编码列表
+  mode: Mode; // AND/OR 模式
+  role?: string; // 可选的角色兜底
 }
 ```
 
 **已解析数据范围类型**:
+
 - `{ kind: DataScope.ALL }`
 - `{ kind: DataScope.DEPT }`
 - `{ kind: DataScope.DEPT_AND_CHILD; deptIds: bigint[] }`
@@ -123,24 +135,26 @@ interface PermissionMetadata {
 **文件**: `libs/auth/src/types/user-principal.type.ts`
 
 **用户主体结构**:
+
 ```ts
 interface UserPrincipal {
   userId: bigint;
   username: string;
-  realName: string;
+  nickName: string;
   deptId: bigint | null;
   roleKeys: string[];
   permissionCodes: Set<string>;
   permissionVersion: number;
   sessionId: string;
-  status: '0' | '1';      // 用户状态
-  delFlag: '0' | '1';     // 删除标志
-  issuedAt: number;       // Token 签发时间
-  expiresAt: number;      // Token 过期时间
+  status: '0' | '1'; // 用户状态
+  delFlag: '0' | '1'; // 删除标志
+  issuedAt: number; // Token 签发时间
+  expiresAt: number; // Token 过期时间
 }
 ```
 
 **辅助函数**:
+
 - `isUserValid()` - 检查用户是否有效
 - `hasRole()` - 检查用户是否拥有某个角色
 - `hasPermission()` - 检查用户是否拥有某个权限
@@ -152,12 +166,14 @@ interface UserPrincipal {
 **文件**: `libs/permission/src/constants/reserved-roles.ts`
 
 **超级管理员角色**:
+
 - 常量: `RESERVED_ROLES.SUPER_ADMIN = 'superadmin'`
 - 不能被删除（至少保留一个启用用户）
 - 权限判定时自动通过
 - 数据范围自动为全部
 
 **辅助函数**:
+
 - `isSuperAdmin(roleKeys)` - 检查是否为超级管理员
 - `isSuperAdminRole(roleKey)` - 检查单个角色是否为超级管理员
 
@@ -166,6 +182,7 @@ interface UserPrincipal {
 **文件**: `libs/common/src/utils/bigint.util.spec.ts`
 
 **测试覆盖**:
+
 - ✅ 有效的十进制字符串解析
 - ✅ 无效格式拒绝（非字符串、前导零、负数等）
 - ✅ 自定义错误字段名
@@ -176,6 +193,7 @@ interface UserPrincipal {
 - ✅ PostgreSQL BIGINT 范围边界
 
 **运行测试**:
+
 ```bash
 npm run test libs/common
 # 或
@@ -187,6 +205,7 @@ npm run test:watch
 **文件**: `docs/adr/jwt-configuration.md`
 
 **内容**:
+
 - ✅ JWT 算法选择（HS256）
 - ✅ 密钥管理策略（环境变量、Secret Manager）
 - ✅ Token 有效期设置（Access: 15min, Refresh: 7days）
@@ -201,6 +220,7 @@ npm run test:watch
 - ✅ 参考资源和标准
 
 **关键决策**:
+
 - ✅ 不在 Token 中存储权限列表
 - ✅ 最小化 Payload（减少网络传输）
 - ✅ 支持 Session 级别的 Token 撤销
@@ -268,15 +288,15 @@ libs/
 
 ### ✅ BigInt 边界处理
 
-| 场景 | 处理方式 | 验证 |
-|------|---------|------|
-| API 入参 | 字符串 DTO + 格式验证 | ✅ |
-| Service 内部 | BigInt 类型 | ✅ |
-| 数据库查询 | Prisma BigInt | ✅ |
-| API 出参 | 字符串转换 | ✅ |
-| JWT Payload | 字符串（sub, sid） | ✅ |
-| 缓存序列化 | 字符串转换 | ✅ |
-| 日志/审计 | 字符串形式 | ✅ |
+| 场景         | 处理方式              | 验证 |
+| ------------ | --------------------- | ---- |
+| API 入参     | 字符串 DTO + 格式验证 | ✅   |
+| Service 内部 | BigInt 类型           | ✅   |
+| 数据库查询   | Prisma BigInt         | ✅   |
+| API 出参     | 字符串转换            | ✅   |
+| JWT Payload  | 字符串（sub, sid）    | ✅   |
+| 缓存序列化   | 字符串转换            | ✅   |
+| 日志/审计    | 字符串形式            | ✅   |
 
 ### ✅ 类型推断
 
@@ -292,7 +312,7 @@ const metadata: PermissionMetadata = {
 // 数据范围类型推断
 const scope: ResolvedDataScope = {
   kind: DataScope.DEPT_AND_CHILD,
-  deptIds: [1n, 2n, 3n],  // 类型正确推断为 bigint[]
+  deptIds: [1n, 2n, 3n], // 类型正确推断为 bigint[]
 };
 
 // 用户主体类型推断
@@ -336,11 +356,13 @@ const user: UserPrincipal = {
 ## 与批次 1 的依赖关系
 
 **批次 1（数据库迁移）** 需要：
+
 - ✅ `BigInt` 工具函数（用于 ID 解析）
 - ✅ `DataScope` 枚举（用于 SQL migration）
 - ✅ `PermissionMetadata` 类型（用于权限表设计）
 
 **建议顺序**:
+
 1. 完成本批次（环境准备）✅
 2. 安装 `@nestjs/jwt` 依赖（需要 npm 环境）
 3. 执行批次 1（数据库迁移）
@@ -377,9 +399,11 @@ npm run build
 ## 设计决策记录（ADR）
 
 已创建的 ADR 文档：
+
 - `docs/adr/jwt-configuration.md` - JWT 配置设计决策
 
 后续需要创建的 ADR：
+
 - BigInt 编码边界规范（建议在批次 1）
 - 数据范围映射策略（建议在批次 1）
 - 权限缓存机制（建议在批次 3）
@@ -439,13 +463,13 @@ class UserService {
 
 **批次 0 成果** 为以下批次奠定基础：
 
-| 批次 | 依赖 | 前置完成度 |
-|------|------|----------|
-| 批次 1（数据库迁移） | ✅ 完成 | 100% |
-| 批次 2（认证模块） | ✅ 完成 | 100% |
-| 批次 3（权限核心） | ✅ 完成 | 100% |
-| 批次 4（菜单权限） | ✅ 完成 | 100% |
-| 批次 5-10（后续批次） | ✅ 完成 | 100% |
+| 批次                  | 依赖    | 前置完成度 |
+| --------------------- | ------- | ---------- |
+| 批次 1（数据库迁移）  | ✅ 完成 | 100%       |
+| 批次 2（认证模块）    | ✅ 完成 | 100%       |
+| 批次 3（权限核心）    | ✅ 完成 | 100%       |
+| 批次 4（菜单权限）    | ✅ 完成 | 100%       |
+| 批次 5-10（后续批次） | ✅ 完成 | 100%       |
 
 **风险评估**: ✅ 低
 
@@ -453,5 +477,5 @@ class UserService {
 
 ---
 
-**文档完成**: 2025-01-17 / 批次 0  
+**文档完成**: 2025-01-17 / 批次 0
 **下一步**: 准备批次 1（数据库迁移）

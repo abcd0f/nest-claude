@@ -49,10 +49,13 @@ export enum Mode {
   OR = 'OR',
 }
 
-export type PermissionInput = string | string[] | {
-  value: string | string[];
-  mode?: Mode;
-};
+export type PermissionInput =
+  | string
+  | string[]
+  | {
+      value: string | string[];
+      mode?: Mode;
+    };
 
 export type PermissionMetadata = {
   value: readonly string[];
@@ -63,6 +66,7 @@ export function Permission(input: PermissionInput): MethodDecorator & ClassDecor
 ```
 
 **设计说明：**
+
 - 单个字符串自动转为 `{ value: [string], mode: AND }`
 - 字符串数组默认 AND 模式，需要 OR 必须显式声明
 - 移除 `role` 兜底设计，简化权限判定逻辑
@@ -79,6 +83,7 @@ pnpm add @nestjs/jwt
 ```
 
 **设计决策：**
+
 - ✅ 使用 `@nestjs/jwt` 处理 JWT 签发和校验
 - ✅ 密码使用项目现有 `PasswordHashService`
 - ❌ 不使用 `@nestjs/authorization` 和 `@nestjs/authentication`（增加复杂度，收益有限）
@@ -156,6 +161,7 @@ AppModule
 ```
 
 **依赖规则：**
+
 1. `AuthModule` 不依赖 `SystemModule`，避免循环依赖
 2. 全局 Guard 在 `CoreModule` 通过 `APP_GUARD` 注册
 3. Guard 注册顺序：先 `AuthGuard`，后 `PermissionGuard`
@@ -182,15 +188,16 @@ model Permission {
   remark       String?  @db.VarChar(500)
   createdAt    DateTime @default(now()) @map(“created_at”)
   updatedAt    DateTime @updatedAt @map(“updated_at”)
-  
+
   menu         Menu?    @relation(fields: [menuId], references: [menuId], onDelete: SetNull)
   roles        RolePermission[]
-  
+
   @@map(“sys_permission”)
 }
 ```
 
 **设计说明：**
+
 - `code` 全局唯一，是权限编码的稳定标识
 - `menuId` 唯一，一个 C/F 菜单节点只能绑定一个权限
 - M 目录不产生权限，不关联 Permission
@@ -231,12 +238,12 @@ model Role {
   remark            String?  @db.VarChar(500)
   createdAt         DateTime @default(now()) @map(“created_at”)
   updatedAt         DateTime @updatedAt @map(“updated_at”)
-  
+
   users             UserRole[]
   permissions       RolePermission[]
   menus             RoleMenu[]
   depts             RoleDept[]
-  
+
   @@map(“sys_role”)
 }
 ```
@@ -245,11 +252,11 @@ model Role {
 
 ```ts
 export enum DataScope {
-  ALL = '1',           // 全部数据
-  CUSTOM = '2',        // sys_role_dept 指定部门
-  DEPT = '3',          // 本部门
+  ALL = '1', // 全部数据
+  CUSTOM = '2', // sys_role_dept 指定部门
+  DEPT = '3', // 本部门
   DEPT_AND_CHILD = '4', // 本部门及以下
-  SELF = '5',          // 仅本人
+  SELF = '5', // 仅本人
 }
 ```
 
@@ -260,7 +267,7 @@ model User {
   userId              BigInt      @id @default(autoincrement()) @map(“user_id”)
   username            String      @unique @db.VarChar(64)
   password            String      @db.VarChar(255)
-  realName            String      @db.VarChar(100)
+  nickName            String      @db.VarChar(100)
   email               String?     @unique @db.VarChar(100)
   phone               String?     @db.VarChar(20)
   deptId              BigInt?     @map(“dept_id”)
@@ -271,16 +278,17 @@ model User {
   permissionVersion   Int         @default(0)                     // 权限版本号，用于缓存失效
   createdAt           DateTime    @default(now()) @map(“created_at”)
   updatedAt           DateTime    @updatedAt @map(“updated_at”)
-  
+
   dept                Dept?       @relation(fields: [deptId], references: [deptId])
   roles               UserRole[]
   posts               UserPost[]
-  
+
   @@map(“sys_user”)
 }
 ```
 
 **关键字段说明：**
+
 - `permissionVersion`：权限缓存版本号，权限变更时递增，自动使旧缓存失效
 
 #### 3.1.4 Menu（菜单表）
@@ -299,15 +307,16 @@ model Menu {
   delFlag             String      @default(“0”) @db.Char(1)      // 0=未删 1=已删
   createdAt           DateTime    @default(now()) @map(“created_at”)
   updatedAt           DateTime    @updatedAt @map(“updated_at”)
-  
+
   permission          Permission?
   roles               RoleMenu[]
-  
+
   @@map(“sys_menu”)
 }
 ```
 
 **菜单类型说明：**
+
 - M（目录）：不允许 `perms`，不允许 `path/component`
 - C（菜单）：可选 `perms`，必须有 `path/component`
 - F（按钮）：可选 `perms`，不允许 `path/component`
@@ -408,15 +417,15 @@ Role
 
 #### 分层处理规则
 
-| 边界                 | 类型     | 转换规则                                |
-| -------------------- | -------- | --------------------------------------- |
-| Prisma schema/Client | `bigint` | 数据库查询、关联 ID 全部使用 `bigint`   |
-| Domain service       | `bigint` | Service 接收已验证的 `bigint`           |
-| Request DTO          | `string` | `@IsString()` + 十进制格式校验          |
-| Response DTO         | `string` | `@Transform()` 转换为字符串             |
-| JWT claims           | `string` | `sub/sid` 使用字符串                    |
-| Redis/JSON cache     | `string` | 序列化前转换为字符串                    |
-| 日志/审计            | `string` | `.toString()` 转换                      |
+| 边界                 | 类型     | 转换规则                              |
+| -------------------- | -------- | ------------------------------------- |
+| Prisma schema/Client | `bigint` | 数据库查询、关联 ID 全部使用 `bigint` |
+| Domain service       | `bigint` | Service 接收已验证的 `bigint`         |
+| Request DTO          | `string` | `@IsString()` + 十进制格式校验        |
+| Response DTO         | `string` | `@Transform()` 转换为字符串           |
+| JWT claims           | `string` | `sub/sid` 使用字符串                  |
+| Redis/JSON cache     | `string` | 序列化前转换为字符串                  |
+| 日志/审计            | `string` | `.toString()` 转换                    |
 
 #### 工具函数
 
@@ -451,10 +460,10 @@ export class MenuResponseDto {
   @Expose()
   @Transform(({ value }) => value?.toString(), { toPlainOnly: true })
   menuId!: string;
-  
+
   @Expose()
   menuName!: string;
-  
+
   // ... 其他字段
 }
 ```
@@ -477,15 +486,16 @@ export class MenuResponseDto {
 
 ```ts
 class AuthService {
-  async login(dto: LoginDto): Promise<LoginResultDto>
-  async refreshToken(refreshToken: string): Promise<TokenDto>
-  async logout(userId: bigint, sessionId: string): Promise<void>
-  async getCurrentUser(userId: bigint): Promise<UserPrincipal>
-  async validateUser(username: string, password: string): Promise<User | null>
+  async login(dto: LoginDto): Promise<LoginResultDto>;
+  async refreshToken(refreshToken: string): Promise<TokenDto>;
+  async logout(userId: bigint, sessionId: string): Promise<void>;
+  async getCurrentUser(userId: bigint): Promise<UserPrincipal>;
+  async validateUser(username: string, password: string): Promise<User | null>;
 }
 ```
 
 **登录流程：**
+
 1. 校验 DTO（用户名、密码格式）
 2. 查询用户并验证密码（不存在时执行 dummy hash 防止时序攻击）
 3. 检查用户状态（`status='0'`, `delFlag='0'`）
@@ -498,12 +508,12 @@ class AuthService {
 
 ```ts
 interface AccessTokenPayload {
-  sub: string;           // userId (字符串)
-  sid: string;           // sessionId (字符串)
+  sub: string; // userId (字符串)
+  sid: string; // sessionId (字符串)
   iat: number;
   exp: number;
-  iss: string;           // 发行者
-  aud: string;           // 受众
+  iss: string; // 发行者
+  aud: string; // 受众
 }
 ```
 
@@ -515,10 +525,10 @@ interface AccessTokenPayload {
 
 ```ts
 class PermissionService {
-  async resolveUserPermissions(userId: bigint): Promise<Set<string>>
-  async invalidateUserPermissions(userIds: bigint[]): Promise<void>
-  async invalidateRolePermissions(roleId: bigint): Promise<void>
-  async syncPermissionSeeds(seeds: PermissionDefinition[]): Promise<SyncResult>
+  async resolveUserPermissions(userId: bigint): Promise<Set<string>>;
+  async invalidateUserPermissions(userIds: bigint[]): Promise<void>;
+  async invalidateRolePermissions(roleId: bigint): Promise<void>;
+  async syncPermissionSeeds(seeds: PermissionDefinition[]): Promise<SyncResult>;
 }
 ```
 
@@ -566,7 +576,7 @@ async resolveUserPermissions(userId: bigint): Promise<Set<string>> {
   });
 
   const permSet = new Set(permissions.map(p => p.code));
-  
+
   // 4. 缓存 1 小时
   await this.cacheManager.set(cacheKey, [...permSet], 3600 * 1000);
 
@@ -601,13 +611,13 @@ async invalidateRolePermissions(roleId: bigint) {
 
 ```ts
 class DataScopeService {
-  async resolveUserScope(userId: bigint): Promise<ResolvedDataScope>
+  async resolveUserScope(userId: bigint): Promise<ResolvedDataScope>;
   buildWhereForResource(
     scope: ResolvedDataScope,
     resource: ResourceType,
     userDeptId: bigint | null,
-    userId: bigint
-  ): Prisma.WhereInput
+    userId: bigint,
+  ): Prisma.WhereInput;
 }
 ```
 
@@ -703,11 +713,11 @@ buildWhereForResource(
 
 ```ts
 class MenuService {
-  async saveMenu(input: CreateMenuDto | UpdateMenuDto): Promise<MenuDto>
-  async deleteMenu(menuId: bigint): Promise<void>
-  async getMenuTree(): Promise<MenuTreeDto[]>
-  async getRoleMenuTree(roleId: bigint): Promise<RoleMenuTreeDto>
-  async assignMenusToRole(roleId: bigint, menuIds: bigint[]): Promise<void>
+  async saveMenu(input: CreateMenuDto | UpdateMenuDto): Promise<MenuDto>;
+  async deleteMenu(menuId: bigint): Promise<void>;
+  async getMenuTree(): Promise<MenuTreeDto[]>;
+  async getRoleMenuTree(roleId: bigint): Promise<RoleMenuTreeDto>;
+  async assignMenusToRole(roleId: bigint, menuIds: bigint[]): Promise<void>;
 }
 ```
 
@@ -851,7 +861,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private jwtService: JwtService,
-    private authService: AuthService
+    private authService: AuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -876,14 +886,13 @@ export class AuthGuard implements CanActivate {
     try {
       // 3. 验证 Token
       const payload = await this.jwtService.verifyAsync(token);
-      
+
       // 4. 加载用户主体
       const userId = parseId(payload.sub, 'userId');
       const user = await this.authService.getCurrentUser(userId);
 
       // 5. 设置到请求上下文
       request.user = user;
-
     } catch (error) {
       throw new UnauthorizedException('令牌无效或已过期');
     }
@@ -905,15 +914,15 @@ export class AuthGuard implements CanActivate {
 export class PermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    private permissionService: PermissionService
+    private permissionService: PermissionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // 1. 读取权限元数据
-    const permission = this.reflector.getAllAndOverride<PermissionMetadata>(
-      'permission',
-      [context.getHandler(), context.getClass()]
-    );
+    const permission = this.reflector.getAllAndOverride<PermissionMetadata>('permission', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     // 无权限声明，只要求认证
     if (!permission) {
@@ -929,9 +938,7 @@ export class PermissionGuard implements CanActivate {
     }
 
     // 3. 解析用户权限
-    const userPermissions = await this.permissionService.resolveUserPermissions(
-      user.userId
-    );
+    const userPermissions = await this.permissionService.resolveUserPermissions(user.userId);
 
     // 4. 判定权限
     const hasPermission = this.checkPermission(permission, userPermissions);
@@ -946,7 +953,7 @@ export class PermissionGuard implements CanActivate {
   private checkPermission(
     required: PermissionMetadata,
     userPerms: Set<string>,
-    userRoles: string[]
+    userRoles: string[],
   ): boolean {
     // 超级管理员直接通过
     if (isSuperAdmin(userRoles)) {
@@ -955,12 +962,12 @@ export class PermissionGuard implements CanActivate {
 
     if (required.mode === Mode.AND) {
       // 全部包含
-      return required.value.every(p => userPerms.has(p));
+      return required.value.every((p) => userPerms.has(p));
     }
 
     if (required.mode === Mode.OR) {
       // 至少一个
-      return required.value.some(p => userPerms.has(p));
+      return required.value.some((p) => userPerms.has(p));
     }
 
     return false;
@@ -978,19 +985,20 @@ export class PermissionGuard implements CanActivate {
 
 ```json
 {
-  "menuId": "101",           // 编辑时必传，新增时不传
+  "menuId": "101", // 编辑时必传，新增时不传
   "parentId": "20",
   "menuName": "新增",
   "orderNum": 2,
-  "menuType": "F",          // M=目录, C=菜单, F=按钮
+  "menuType": "F", // M=目录, C=菜单, F=按钮
   "perms": "system:user:add", // C/F 可选，M 不允许
-  "path": null,             // M/F 不允许，C 必须
-  "component": null,        // M/F 不允许，C 必须
+  "path": null, // M/F 不允许，C 必须
+  "component": null, // M/F 不允许，C 必须
   "status": "0"
 }
 ```
 
 **后端接口：**
+
 - `POST /system/menu` - 新增菜单
 - `PUT /system/menu/:menuId` - 更新菜单
 - `DELETE /system/menu/:menuId` - 删除菜单
@@ -1036,12 +1044,13 @@ export class PermissionGuard implements CanActivate {
   "roleName": "用户管理员",
   "roleKey": "user-admin",
   "dataScope": "2",
-  "menuIds": ["1", "100", "1001", "1002"],  // 一维数组
+  "menuIds": ["1", "100", "1001", "1002"], // 一维数组
   "menuCheckStrictly": false
 }
 ```
 
 **后端处理流程：**
+
 1. 校验所有 `menuIds` 存在且启用
 2. 同一事务内：
    - 清除原有 `RoleMenu` 和 `RolePermission`
@@ -1072,11 +1081,7 @@ export class PermissionGuard implements CanActivate {
 
 ```json
 {
-  "permissions": [
-    "system:user:view",
-    "system:user:add",
-    "system:user:edit"
-  ]
+  "permissions": ["system:user:view", "system:user:add", "system:user:edit"]
 }
 ```
 
@@ -1099,6 +1104,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 验证 JWT 配置：密钥、issuer、audience、TTL
 
 **交付物：**
+
 - 模块骨架代码
 - 工具函数单元测试
 - JWT 配置 ADR 文档
@@ -1119,6 +1125,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 测试环境验证迁移
 
 **交付物：**
+
 - Prisma migration 文件
 - 数据迁移脚本
 - 迁移前后数据对账报告
@@ -1140,6 +1147,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写 e2e 测试：登录成功/失败、Token 过期、停用用户
 
 **交付物：**
+
 - `libs/auth` 完整代码
 - 认证 API 文档
 - e2e 测试（覆盖率 > 80%）
@@ -1159,6 +1167,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写 e2e 测试：有权限/无权限/停用角色
 
 **交付物：**
+
 - `libs/permission` 核心代码
 - 权限装饰器使用文档
 - 单元测试 + e2e 测试
@@ -1178,6 +1187,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写集成测试：菜单同步、权限冲突、角色授权
 
 **交付物：**
+
 - `MenuService` 完整代码
 - 菜单管理 API 文档
 - 集成测试
@@ -1189,29 +1199,35 @@ export class PermissionGuard implements CanActivate {
 **任务清单：**
 
 **用户管理：**
+
 - [ ] 实现 `UserService`：CRUD、分配角色、重置密码
 - [ ] 实现 `UserController`
 - [ ] 应用 `@Permission` 装饰器
 
 **角色管理：**
+
 - [ ] 实现 `RoleService`：CRUD、菜单授权、数据范围设置
 - [ ] 实现 `RoleController`
 
 **部门管理：**
+
 - [ ] 实现 `DeptService`：树查询、CRUD、`ancestors` 维护
 - [ ] 实现 `DeptController`
 
 **职位管理：**
+
 - [ ] 实现 `PostService`：CRUD、用户分配
 - [ ] 实现 `PostController`
 
 **所有 Service：**
+
 - [ ] 实现 DTO Mapper：BigInt 转换
 - [ ] 实现分页查询
 - [ ] 实现事务保护
 - [ ] 编写集成测试
 
 **交付物：**
+
 - 系统管理模块完整代码
 - API 文档
 - 集成测试
@@ -1233,6 +1249,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写集成测试：越权访问拒绝
 
 **交付物：**
+
 - `DataScopeService` 完整代码
 - 资源策略配置文档
 - 单元测试 + 集成测试
@@ -1252,6 +1269,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写数据库备份/恢复脚本
 
 **交付物：**
+
 - 权限种子文件
 - CLI 命令
 - 运维工具文档
@@ -1271,6 +1289,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 编写审计查询测试
 
 **交付物：**
+
 - 审计模块代码
 - 审计日志查询 API
 - 审计策略文档
@@ -1291,6 +1310,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 性能测试：权限查询、缓存命中率
 
 **交付物：**
+
 - 前端集成测试报告
 - E2E 测试套件
 - 性能测试报告
@@ -1311,6 +1331,7 @@ export class PermissionGuard implements CanActivate {
 - [ ] 生产环境备份
 
 **交付物：**
+
 - 安全扫描报告
 - 性能优化报告
 - 上线检查清单
@@ -1321,25 +1342,30 @@ export class PermissionGuard implements CanActivate {
 ### 7.1 Service 分层规范
 
 **Controller 层：**
+
 - 只负责路由、DTO 校验、当前用户获取
 - 不写 Prisma 查询
 - 不处理 BigInt 转换（由 DTO Transformer 处理）
 
 **Application Service 层：**
+
 - 编排一个用例（如 `updateMenu`、`assignRoleMenus`）
 - 调用领域规则、启动事务、发布结果
 - 方法长度原则上不超过 50 行
 
 **Domain Service/Policy 层：**
+
 - 可复用规则（如 `PermissionEvaluator`、`DataScopeResolver`）
 - 不依赖 HTTP request
 - 纯函数优先
 
 **Repository/Query 层：**
+
 - Prisma 读写和固定查询
 - 不决定权限逻辑
 
 **Mapper 层：**
+
 - Prisma model <-> DTO
 - 集中处理 BigInt、Date、敏感字段
 
@@ -1351,11 +1377,11 @@ export class PermissionGuard implements CanActivate {
 async list(query: UserListQuery, actor: UserPrincipal) {
   // 1. parseQuery：DTO 转内部 query，完成校验
   const input = parseUserListQuery(query);
-  
+
   // 2. buildWhere：组合租户/状态/关键字/数据范围
   const scope = await this.dataScope.resolve(actor, USER_RESOURCE);
   const where = andWhere(buildUserFilters(input), scope.where);
-  
+
   // 3. buildOrderBy：白名单映射
   const orderBy = USER_ORDER_BY[input.orderBy];
 
@@ -1370,7 +1396,7 @@ async list(query: UserListQuery, actor: UserPrincipal) {
     }),
     this.prisma.user.count({ where })
   ]);
-  
+
   return toPageDto(UserListItemDto, {
     items: rows,
     meta: makePageMeta(input, total)
@@ -1379,6 +1405,7 @@ async list(query: UserListQuery, actor: UserPrincipal) {
 ```
 
 **查询复杂度门槛：**
+
 - 单个 service 方法不超过 50 行
 - 超过 100 行必须说明为何不能拆分
 - `select/include/where` 需要命名常量
@@ -1408,6 +1435,7 @@ return await this.prisma.$transaction(async (tx) => {
 ```
 
 **事务配置：**
+
 - 设置合理 `timeout/maxWait`
 - 必要时使用 `Serializable` 隔离级别
 - 捕获唯一约束冲突，转换为 409
@@ -1417,16 +1445,19 @@ return await this.prisma.$transaction(async (tx) => {
 **必需测试：**
 
 **单元测试：**
+
 - 装饰器规范化：字符串、数组、AND/OR、类/方法覆盖
 - BigInt 边界：超大 ID、非法字符串、响应转换
 - 权限判定：AND/OR、停用角色、用户停用
 
 **集成测试：**
+
 - 守卫：匿名 401、公开放行、有效身份、缺权限 403
 - 认证：密码正确/错误、停用用户、Token 过期
 - 数据范围：五种模式、多角色并集、越权拒绝
 
 **E2E 测试：**
+
 - 完整业务流程：菜单管理、角色授权、用户分配
 - 并发场景：角色权限变更、缓存失效
 - 越权测试：IDOR、垂直越权、水平越权
@@ -1445,20 +1476,20 @@ return await this.prisma.$transaction(async (tx) => {
 
 ### 时间估算（单人）
 
-| 批次 | 任务 | 估算天数 |
-|------|------|----------|
-| 0 | 环境准备 | 1-2 天 |
-| 1 | 数据库迁移 | 2-3 天 |
-| 2 | 认证模块 | 3-4 天 |
-| 3 | 权限模块核心 | 3-4 天 |
-| 4 | 菜单权限管理 | 4-5 天 |
-| 5 | 系统管理模块 | 5-7 天 |
-| 6 | 数据范围引擎 | 4-5 天 |
-| 7 | 权限种子和工具 | 2-3 天 |
-| 8 | 审计和监控 | 2-3 天 |
-| 9 | 前端集成 E2E | 3-4 天 |
-| 10 | 上线准备加固 | 2-3 天 |
-| **总计** | | **31-43 天** |
+| 批次     | 任务           | 估算天数     |
+| -------- | -------------- | ------------ |
+| 0        | 环境准备       | 1-2 天       |
+| 1        | 数据库迁移     | 2-3 天       |
+| 2        | 认证模块       | 3-4 天       |
+| 3        | 权限模块核心   | 3-4 天       |
+| 4        | 菜单权限管理   | 4-5 天       |
+| 5        | 系统管理模块   | 5-7 天       |
+| 6        | 数据范围引擎   | 4-5 天       |
+| 7        | 权限种子和工具 | 2-3 天       |
+| 8        | 审计和监控     | 2-3 天       |
+| 9        | 前端集成 E2E   | 3-4 天       |
+| 10       | 上线准备加固   | 2-3 天       |
+| **总计** |                | **31-43 天** |
 
 ### 里程碑
 
@@ -1473,11 +1504,13 @@ return await this.prisma.$transaction(async (tx) => {
 ### 依赖与风险
 
 **关键依赖：**
+
 1. 数据库现状盘点和迁移方案确认（批次 1）
 2. 前端 ID 类型兼容性确认（批次 0）
 3. JWT 策略和刷新 Token 方案确认（批次 2）
 
 **风险点：**
+
 1. 数据迁移中的编码重复和冲突（需人工决策）
 2. 前端树组件不支持字符串 ID（需前端改造）
 3. 权限缓存失效不及时（需监控和测试）
@@ -1550,111 +1583,111 @@ action:   操作动作（view, add, edit, remove, resetPwd, assign）
 
 ### 标准动作
 
-| 动作 | 说明 |
-|------|------|
-| `view` | 查看/查询 |
-| `add` | 新增 |
-| `edit` | 编辑 |
-| `remove` | 删除 |
-| `export` | 导出 |
-| `import` | 导入 |
-| `resetPwd` | 重置密码 |
-| `assign` | 分配（角色、部门等） |
-| `scope` | 数据范围设置 |
+| 动作       | 说明                 |
+| ---------- | -------------------- |
+| `view`     | 查看/查询            |
+| `add`      | 新增                 |
+| `edit`     | 编辑                 |
+| `remove`   | 删除                 |
+| `export`   | 导出                 |
+| `import`   | 导入                 |
+| `resetPwd` | 重置密码             |
+| `assign`   | 分配（角色、部门等） |
+| `scope`    | 数据范围设置         |
 
 ### 示例
 
 ```ts
 // 用户管理
-'system:user:view'      // 查看用户
-'system:user:add'       // 新增用户
-'system:user:edit'      // 编辑用户
-'system:user:remove'    // 删除用户
-'system:user:resetPwd'  // 重置密码
-'system:user:assign'    // 分配角色
+'system:user:view'; // 查看用户
+'system:user:add'; // 新增用户
+'system:user:edit'; // 编辑用户
+'system:user:remove'; // 删除用户
+'system:user:resetPwd'; // 重置密码
+'system:user:assign'; // 分配角色
 
 // 角色管理
-'system:role:view'
-'system:role:add'
-'system:role:edit'
-'system:role:remove'
-'system:role:assign'    // 菜单授权
-'system:role:scope'     // 数据范围
+'system:role:view';
+'system:role:add';
+'system:role:edit';
+'system:role:remove';
+'system:role:assign'; // 菜单授权
+'system:role:scope'; // 数据范围
 
 // 菜单管理
-'system:menu:view'
-'system:menu:add'
-'system:menu:edit'
-'system:menu:remove'
+'system:menu:view';
+'system:menu:add';
+'system:menu:edit';
+'system:menu:remove';
 
 // 部门管理
-'system:dept:view'
-'system:dept:add'
-'system:dept:edit'
-'system:dept:remove'
+'system:dept:view';
+'system:dept:add';
+'system:dept:edit';
+'system:dept:remove';
 ```
 
 ## 附录 B：API 清单
 
 ### 认证 API
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| POST | `/auth/login` | 公开 | 登录 |
-| POST | `/auth/logout` | 认证 | 登出 |
-| POST | `/auth/refresh` | 公开 | 刷新 Token |
-| GET | `/auth/me` | 认证 | 当前用户信息 |
-| GET | `/auth/permissions` | 认证 | 当前用户权限列表 |
+| 方法 | 路径                | 权限 | 说明             |
+| ---- | ------------------- | ---- | ---------------- |
+| POST | `/auth/login`       | 公开 | 登录             |
+| POST | `/auth/logout`      | 认证 | 登出             |
+| POST | `/auth/refresh`     | 公开 | 刷新 Token       |
+| GET  | `/auth/me`          | 认证 | 当前用户信息     |
+| GET  | `/auth/permissions` | 认证 | 当前用户权限列表 |
 
 ### 用户管理 API
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| GET | `/system/user` | `system:user:view` | 用户列表 |
-| GET | `/system/user/:id` | `system:user:view` | 用户详情 |
-| POST | `/system/user` | `system:user:add` | 新增用户 |
-| PUT | `/system/user/:id` | `system:user:edit` | 编辑用户 |
-| DELETE | `/system/user/:id` | `system:user:remove` | 删除用户 |
-| PUT | `/system/user/:id/reset-pwd` | `system:user:resetPwd` | 重置密码 |
-| PUT | `/system/user/:id/roles` | `system:user:assign` | 分配角色 |
+| 方法   | 路径                         | 权限                   | 说明     |
+| ------ | ---------------------------- | ---------------------- | -------- |
+| GET    | `/system/user`               | `system:user:view`     | 用户列表 |
+| GET    | `/system/user/:id`           | `system:user:view`     | 用户详情 |
+| POST   | `/system/user`               | `system:user:add`      | 新增用户 |
+| PUT    | `/system/user/:id`           | `system:user:edit`     | 编辑用户 |
+| DELETE | `/system/user/:id`           | `system:user:remove`   | 删除用户 |
+| PUT    | `/system/user/:id/reset-pwd` | `system:user:resetPwd` | 重置密码 |
+| PUT    | `/system/user/:id/roles`     | `system:user:assign`   | 分配角色 |
 
 ### 角色管理 API
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| GET | `/system/role` | `system:role:view` | 角色列表 |
-| GET | `/system/role/:id` | `system:role:view` | 角色详情 |
-| POST | `/system/role` | `system:role:add` | 新增角色 |
-| PUT | `/system/role/:id` | `system:role:edit` | 编辑角色 |
-| DELETE | `/system/role/:id` | `system:role:remove` | 删除角色 |
-| PUT | `/system/role/:id/menus` | `system:role:assign` | 菜单授权 |
-| PUT | `/system/role/:id/data-scope` | `system:role:scope` | 数据范围 |
+| 方法   | 路径                          | 权限                 | 说明     |
+| ------ | ----------------------------- | -------------------- | -------- |
+| GET    | `/system/role`                | `system:role:view`   | 角色列表 |
+| GET    | `/system/role/:id`            | `system:role:view`   | 角色详情 |
+| POST   | `/system/role`                | `system:role:add`    | 新增角色 |
+| PUT    | `/system/role/:id`            | `system:role:edit`   | 编辑角色 |
+| DELETE | `/system/role/:id`            | `system:role:remove` | 删除角色 |
+| PUT    | `/system/role/:id/menus`      | `system:role:assign` | 菜单授权 |
+| PUT    | `/system/role/:id/data-scope` | `system:role:scope`  | 数据范围 |
 
 ### 菜单管理 API
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| GET | `/system/menu/tree` | `system:menu:view` | 菜单树 |
-| GET | `/system/menu/:id` | `system:menu:view` | 菜单详情 |
-| POST | `/system/menu` | `system:menu:add` | 新增菜单 |
-| PUT | `/system/menu/:id` | `system:menu:edit` | 编辑菜单 |
-| DELETE | `/system/menu/:id` | `system:menu:remove` | 删除菜单 |
-| GET | `/system/menu/role/:roleId` | `system:role:view` | 角色菜单树 |
+| 方法   | 路径                        | 权限                 | 说明       |
+| ------ | --------------------------- | -------------------- | ---------- |
+| GET    | `/system/menu/tree`         | `system:menu:view`   | 菜单树     |
+| GET    | `/system/menu/:id`          | `system:menu:view`   | 菜单详情   |
+| POST   | `/system/menu`              | `system:menu:add`    | 新增菜单   |
+| PUT    | `/system/menu/:id`          | `system:menu:edit`   | 编辑菜单   |
+| DELETE | `/system/menu/:id`          | `system:menu:remove` | 删除菜单   |
+| GET    | `/system/menu/role/:roleId` | `system:role:view`   | 角色菜单树 |
 
 ### 部门管理 API
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| GET | `/system/dept/tree` | `system:dept:view` | 部门树 |
-| GET | `/system/dept/:id` | `system:dept:view` | 部门详情 |
-| POST | `/system/dept` | `system:dept:add` | 新增部门 |
-| PUT | `/system/dept/:id` | `system:dept:edit` | 编辑部门 |
-| DELETE | `/system/dept/:id` | `system:dept:remove` | 删除部门 |
+| 方法   | 路径                | 权限                 | 说明     |
+| ------ | ------------------- | -------------------- | -------- |
+| GET    | `/system/dept/tree` | `system:dept:view`   | 部门树   |
+| GET    | `/system/dept/:id`  | `system:dept:view`   | 部门详情 |
+| POST   | `/system/dept`      | `system:dept:add`    | 新增部门 |
+| PUT    | `/system/dept/:id`  | `system:dept:edit`   | 编辑部门 |
+| DELETE | `/system/dept/:id`  | `system:dept:remove` | 删除部门 |
 
 ---
 
-**文档版本：** v2.0  
-**最后更新：** 2025-01-17  
+**文档版本：** v2.0
+**最后更新：** 2025-01-17
 **适用技术栈：** NestJS 12 + Fastify + Prisma 7 + PostgreSQL
 
 ### 表之间的关系

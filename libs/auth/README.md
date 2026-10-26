@@ -18,7 +18,7 @@ import { AuthModule } from '@app/auth';
 @Module({
   imports: [
     AppConfigModule.forRoot(),
-    AuthModule,  // 添加这一行
+    AuthModule, // 添加这一行
     CoreModule,
     // ... 其他模块
   ],
@@ -36,7 +36,7 @@ import { AuthGuard } from '@app/auth';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: AuthGuard,  // 注册全局认证守卫
+      useClass: AuthGuard, // 注册全局认证守卫
     },
   ],
 })
@@ -75,7 +75,7 @@ curl -X POST http://localhost:3000/auth/login \
   },
   "userId": "1",
   "username": "admin",
-  "realName": "Admin User"
+  "nickName": "Admin User"
 }
 ```
 
@@ -89,7 +89,7 @@ curl -X GET http://localhost:3000/auth/me \
 {
   "userId": 1,
   "username": "admin",
-  "realName": "Admin User",
+  "nickName": "Admin User",
   "deptId": null,
   "roleKeys": ["admin"],
   "permissionCodes": ["system:user:view", ...],
@@ -173,6 +173,7 @@ export class AuthController {
 ```
 
 仅用于以下路由：
+
 - `/auth/login` - 登录
 - `/auth/refresh` - 刷新 Token
 - `/health` - 健康检查（如有）
@@ -186,8 +187,8 @@ export class AuthController {
 export class UserController {
   @Get()
   list(@CurrentUser() user: UserPrincipal) {
-    console.log(user.userId);      // bigint
-    console.log(user.roleKeys);    // string[]
+    console.log(user.userId); // bigint
+    console.log(user.roleKeys); // string[]
     console.log(user.permissionCodes); // Set<string>
     return this.userService.list(user);
   }
@@ -200,18 +201,18 @@ export class UserController {
 
 ```typescript
 interface UserPrincipal {
-  userId: bigint;                    // 用户 ID
-  username: string;                  // 用户名
-  realName: string;                  // 真实姓名
-  deptId: bigint | null;             // 部门 ID
-  roleKeys: string[];                // 角色键列表
-  permissionCodes: Set<string>;      // 权限编码集合
-  permissionVersion: number;         // 权限版本（缓存用）
-  sessionId: string;                 // 会话 ID
-  status: '0' | '1';                 // 0=启用, 1=停用
-  delFlag: '0' | '1';                // 0=未删除, 1=已删除
-  issuedAt: number;                  // Token 签发时间戳
-  expiresAt: number;                 // Token 过期时间戳
+  userId: bigint; // 用户 ID
+  username: string; // 用户名
+  nickName: string; // 真实姓名
+  deptId: bigint | null; // 部门 ID
+  roleKeys: string[]; // 角色键列表
+  permissionCodes: Set<string>; // 权限编码集合
+  permissionVersion: number; // 权限版本（缓存用）
+  sessionId: string; // 会话 ID
+  status: '0' | '1'; // 0=启用, 1=停用
+  delFlag: '0' | '1'; // 0=未删除, 1=已删除
+  issuedAt: number; // Token 签发时间戳
+  expiresAt: number; // Token 过期时间戳
 }
 ```
 
@@ -219,23 +220,23 @@ interface UserPrincipal {
 
 ```typescript
 interface AccessTokenPayload {
-  sub: string;        // 用户 ID
-  sid: string;        // 会话 ID
-  jti?: string;       // JWT ID
-  iat?: number;       // 签发时间
-  exp?: number;       // 过期时间
-  iss?: string;       // 发行者
-  aud?: string;       // 受众
+  sub: string; // 用户 ID
+  sid: string; // 会话 ID
+  jti?: string; // JWT ID
+  iat?: number; // 签发时间
+  exp?: number; // 过期时间
+  iss?: string; // 发行者
+  aud?: string; // 受众
 }
 ```
 
 ## 错误处理
 
-| HTTP 状态 | 错误原因 |
-|----------|--------|
-| 401 | 缺少 Token、Token 无效/过期、用户不存在/停用/删除 |
-| 400 | 账户已停用或已删除（登录时）、DTO 校验失败 |
-| 422 | 请求参数格式错误 |
+| HTTP 状态 | 错误原因                                          |
+| --------- | ------------------------------------------------- |
+| 401       | 缺少 Token、Token 无效/过期、用户不存在/停用/删除 |
+| 400       | 账户已停用或已删除（登录时）、DTO 校验失败        |
+| 422       | 请求参数格式错误                                  |
 
 ## 安全特性
 
@@ -275,12 +276,12 @@ npm run test:cov
 
 ## 性能
 
-| 操作 | 耗时 |
-|------|------|
-| 登录 | 50-100ms |
-| Token 验证 | 5-10ms |
-| 刷新 Token | 10-20ms |
-| 用户主体加载 | 5-15ms |
+| 操作         | 耗时     |
+| ------------ | -------- |
+| 登录         | 50-100ms |
+| Token 验证   | 5-10ms   |
+| 刷新 Token   | 10-20ms  |
+| 用户主体加载 | 5-15ms   |
 
 ## 依赖模块
 
@@ -293,6 +294,7 @@ npm run test:cov
 ### 批次 3 - 权限模块
 
 需要补充：
+
 - @Permission() 装饰器
 - PermissionGuard
 - 在 AuthService 中加载用户权限
@@ -300,6 +302,7 @@ npm run test:cov
 ### 批次 7 - 审计和监控
 
 待实现：
+
 - Token 黑名单
 - 会话撤销
 - 登录失败限流
@@ -313,7 +316,8 @@ A: 当前 Refresh Token 就是"记住我"的实现。客户端在关闭前保存
 
 ### Q: Token 过期后如何处理？
 
-A: 
+A:
+
 1. 客户端捕获 401 响应
 2. 用 refreshToken 调用 `/auth/refresh`
 3. 获取新 accessToken 后重试原请求
@@ -330,6 +334,7 @@ A: 当前支持。每次登录创建新的 sessionId，可同时维持多个 ses
 ### Q: 如何实现密码重置？
 
 A: 待实现。需要：
+
 1. 验证邮箱/手机
 2. 生成重置令牌
 3. 用户点击链接重置密码

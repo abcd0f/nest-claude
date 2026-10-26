@@ -260,7 +260,7 @@ export class CoreModule {}
 ### POST /auth/login
 ```
 请求：{ username: string, password: string }
-响应：{ token: TokenDto, userId: string, username: string, realName: string }
+响应：{ token: TokenDto, userId: string, username: string, nickName: string }
 错误：401, 400, 422
 ```
 
@@ -315,7 +315,7 @@ curl -X POST http://localhost:3000/auth/login \
   },
   "userId": "1",
   "username": "admin",
-  "realName": "Admin User"
+  "nickName": "Admin User"
 }
 ```
 
@@ -329,7 +329,7 @@ curl -X GET http://localhost:3000/auth/me \
 {
   "userId": 1,
   "username": "admin",
-  "realName": "Admin User",
+  "nickName": "Admin User",
   "deptId": null,
   "roleKeys": ["admin"],
   "permissionCodes": [...],

@@ -285,7 +285,7 @@ export class AuthService {
     return {
       userId: user.userId,
       username: user.userName,
-      realName: user.nickName,
+      nickName: user.nickName,
       deptId: user.deptId,
       roleKeys,
       permissionCodes,

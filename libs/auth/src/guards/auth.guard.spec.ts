@@ -15,7 +15,7 @@ describe('authGuard', () => {
   const mockUser: UserPrincipal = {
     userId: 1n,
     username: 'admin',
-    realName: 'Admin User',
+    nickName: 'Admin User',
     deptId: null,
     roleKeys: ['admin'],
     permissionCodes: new Set(['system:user:view']),

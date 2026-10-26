@@ -98,7 +98,7 @@ describe('authService', () => {
         },
         userId: '1',
         username: 'admin',
-        realName: 'Admin User',
+        nickName: 'Admin User',
       });
 
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({

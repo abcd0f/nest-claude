@@ -42,6 +42,7 @@ libs/auth/src/
 ### 1. 登录流程 (AuthService.login)
 
 **请求流程：**
+
 ```
 客户端 → POST /auth/login
          ↓
@@ -56,10 +57,11 @@ libs/auth/src/
   9. 记录审计日志
          ↓
 响应 → LoginResultDto
-       (accessToken, refreshToken, userId, username, realName)
+       (accessToken, refreshToken, userId, username, nickName)
 ```
 
 **安全特性：**
+
 - ✅ 恒定时间密码验证（防时序攻击）
 - ✅ Dummy hash 执行（防用户枚举）
 - ✅ 登录失败统一返回"用户名或密码错误"
@@ -69,6 +71,7 @@ libs/auth/src/
 ### 2. Token 架构
 
 **Access Token Payload:**
+
 ```typescript
 {
   sub: "123",          // 用户 ID (字符串)
@@ -82,6 +85,7 @@ libs/auth/src/
 ```
 
 **配置说明：**
+
 - 访问 Token 过期时间：1 小时（可配置）
 - 刷新 Token 过期时间：7 天（可配置）
 - 算法：HS256（可配置）
@@ -114,7 +118,7 @@ HTTP Request with Bearer Token
      - 发行者和受众匹配
      - 未过期
   4. 从数据库加载用户主体:
-     - userId, username, realName, deptId
+     - userId, username, nickName, deptId
      - 角色列表（待权限模块补充）
      - 权限集合（待权限模块补充）
   5. 检查用户状态（启用且未删除）
@@ -126,15 +130,16 @@ HTTP Request with Bearer Token
 
 ### 5. API 端点
 
-| 方法 | 路径 | 认证 | 说明 |
-|------|------|------|------|
-| POST | `/auth/login` | 否 | 用户登录 |
-| POST | `/auth/logout` | 是 | 用户登出 |
-| POST | `/auth/refresh` | 否 | 刷新 Token |
-| GET | `/auth/me` | 是 | 获取当前用户信息 |
-| GET | `/auth/permissions` | 是 | 获取当前用户权限（前端用） |
+| 方法 | 路径                | 认证 | 说明                       |
+| ---- | ------------------- | ---- | -------------------------- |
+| POST | `/auth/login`       | 否   | 用户登录                   |
+| POST | `/auth/logout`      | 是   | 用户登出                   |
+| POST | `/auth/refresh`     | 否   | 刷新 Token                 |
+| GET  | `/auth/me`          | 是   | 获取当前用户信息           |
+| GET  | `/auth/permissions` | 是   | 获取当前用户权限（前端用） |
 
 **登录示例：**
+
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
@@ -151,11 +156,12 @@ curl -X POST http://localhost:3000/auth/login \
   },
   "userId": "1",
   "username": "admin",
-  "realName": "Admin User"
+  "nickName": "Admin User"
 }
 ```
 
 **使用 Token 请求 API：**
+
 ```bash
 curl -X GET http://localhost:3000/auth/me \
   -H "Authorization: Bearer <accessToken>"
@@ -179,6 +185,7 @@ export class AuthController {
 ```
 
 仅用于极少数端点：
+
 - `/auth/login` - 登录
 - `/auth/refresh` - 刷新 Token
 - `/health` - 健康检查（如有）
@@ -192,8 +199,8 @@ export class AuthController {
 export class UserController {
   @Get()
   async list(@CurrentUser() user: UserPrincipal) {
-    console.log(user.userId);    // bigint
-    console.log(user.roleKeys);  // string[]
+    console.log(user.userId); // bigint
+    console.log(user.roleKeys); // string[]
     return this.userService.list(user);
   }
 }
@@ -203,24 +210,25 @@ export class UserController {
 
 ```typescript
 interface UserPrincipal {
-  userId: bigint;                      // 用户 ID
-  username: string;                    // 用户名
-  realName: string;                    // 真实姓名
-  deptId: bigint | null;               // 部门 ID（可选）
-  roleKeys: string[];                  // 角色键列表
-  permissionCodes: Set<string>;        // 权限编码集合
-  permissionVersion: number;           // 权限版本号（缓存失效用）
-  sessionId: string;                   // 会话 ID
-  status: '0' | '1';                   // '0'=启用, '1'=停用
-  delFlag: '0' | '1';                  // '0'=未删除, '1'=已删除
-  issuedAt: number;                    // Token 签发时间戳
-  expiresAt: number;                   // Token 过期时间戳
+  userId: bigint; // 用户 ID
+  username: string; // 用户名
+  nickName: string; // 真实姓名
+  deptId: bigint | null; // 部门 ID（可选）
+  roleKeys: string[]; // 角色键列表
+  permissionCodes: Set<string>; // 权限编码集合
+  permissionVersion: number; // 权限版本号（缓存失效用）
+  sessionId: string; // 会话 ID
+  status: '0' | '1'; // '0'=启用, '1'=停用
+  delFlag: '0' | '1'; // '0'=未删除, '1'=已删除
+  issuedAt: number; // Token 签发时间戳
+  expiresAt: number; // Token 过期时间戳
 }
 ```
 
 ## 测试覆盖
 
 ### AuthService 测试 (auth.service.spec.ts)
+
 - ✅ 登录成功流程
 - ✅ 密码错误处理
 - ✅ 用户不存在处理
@@ -232,6 +240,7 @@ interface UserPrincipal {
 - ✅ 用户验证
 
 ### TokenService 测试 (token.service.spec.ts)
+
 - ✅ 签发 Access Token
 - ✅ 签发 Refresh Token
 - ✅ 验证 Token 签名
@@ -240,6 +249,7 @@ interface UserPrincipal {
 - ✅ 计算过期时间
 
 ### AuthGuard 测试 (auth.guard.spec.ts)
+
 - ✅ 公开路由放行
 - ✅ 缺少 Token 拒绝 (401)
 - ✅ 无效 Bearer 格式拒绝
@@ -283,7 +293,7 @@ import { AuthModule } from '@app/auth';
   imports: [
     AppConfigModule.forRoot(),
     // ... 其他模块
-    AuthModule,  // 添加 AuthModule
+    AuthModule, // 添加 AuthModule
     CoreModule,
     // ... 其他模块
   ],
@@ -343,7 +353,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @Public()  // 标记为公开
+  @Public() // 标记为公开
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
@@ -358,23 +368,27 @@ export class AuthController {
 ## 待实现任务
 
 ### 会话管理（可选）
+
 - [ ] 创建 AuthSession 表（存储 refresh token 哈希）
 - [ ] 实现 Token 黑名单
 - [ ] 实现会话撤销
 - [ ] 实现重放攻击检测
 
 ### 权限模块集成
+
 - [ ] 实现 PermissionGuard（检查 @Permission 装饰器）
 - [ ] 在 AuthService.getCurrentUser 中加载用户权限
 - [ ] 权限缓存机制
 
 ### 审计日志
+
 - [ ] 实现登录审计模块
 - [ ] 记录登录失败
 - [ ] 记录登录成功
 - [ ] 记录异常访问
 
 ### 安全增强
+
 - [ ] 登录失败限流
 - [ ] IP 白名单（可选）
 - [ ] 双因素认证（可选）
@@ -382,12 +396,12 @@ export class AuthController {
 
 ## 性能指标
 
-| 操作 | 耗时 | 说明 |
-|------|------|------|
-| 登录 | 50-100ms | 包括密码哈希验证 |
-| Token 验证 | 5-10ms | Guard 检查 |
-| 刷新 Token | 10-20ms | 重新签发 |
-| 用户主体加载 | 5-15ms | 数据库查询 |
+| 操作         | 耗时     | 说明             |
+| ------------ | -------- | ---------------- |
+| 登录         | 50-100ms | 包括密码哈希验证 |
+| Token 验证   | 5-10ms   | Guard 检查       |
+| 刷新 Token   | 10-20ms  | 重新签发         |
+| 用户主体加载 | 5-15ms   | 数据库查询       |
 
 ## 安全清单
 
@@ -404,18 +418,18 @@ export class AuthController {
 
 ## 错误处理
 
-| 错误 | HTTP 状态 | 说明 |
-|------|----------|------|
-| 缺少 Token | 401 | Authorization 头缺失 |
-| Token 无效 | 401 | 签名错误或格式不合法 |
-| Token 过期 | 401 | JWT 过期时间已到 |
-| 用户不存在 | 401 | 数据库查询无结果 |
-| 用户停用 | 401 | 用户状态为 '1' |
-| 用户已删除 | 401 | 删除标记为 '1' |
-| 密码错误 | 401 | 哈希验证失败 |
-| 账户停用 | 400 | 登录时用户已停用 |
-| 账户已删除 | 400 | 登录时用户已删除 |
-| DTO 校验失败 | 400 | 请求参数格式错误 |
+| 错误         | HTTP 状态 | 说明                 |
+| ------------ | --------- | -------------------- |
+| 缺少 Token   | 401       | Authorization 头缺失 |
+| Token 无效   | 401       | 签名错误或格式不合法 |
+| Token 过期   | 401       | JWT 过期时间已到     |
+| 用户不存在   | 401       | 数据库查询无结果     |
+| 用户停用     | 401       | 用户状态为 '1'       |
+| 用户已删除   | 401       | 删除标记为 '1'       |
+| 密码错误     | 401       | 哈希验证失败         |
+| 账户停用     | 400       | 登录时用户已停用     |
+| 账户已删除   | 400       | 登录时用户已删除     |
+| DTO 校验失败 | 400       | 请求参数格式错误     |
 
 ## 与后续批次的依赖关系
 
@@ -449,6 +463,6 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-**版本**：v1.0  
-**完成日期**：2025-01-18  
+**版本**：v1.0
+**完成日期**：2025-01-18
 **下一步**：批次 3 - 权限模块核心实现

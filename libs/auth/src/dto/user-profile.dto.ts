@@ -25,11 +25,11 @@ export class UserProfileDto {
   username!: string;
 
   /**
-   * 真实姓名
+   * 昵称
    * @example "超级管理员"
    */
   @Expose()
-  realName!: string;
+  nickName!: string;
 
   /**
    * 所属部门 ID

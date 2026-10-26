@@ -58,7 +58,7 @@ describe('permissionGuard', () => {
   const createMockUser = (overrides?: Partial<UserPrincipal>): UserPrincipal => ({
     userId: 1n,
     username: 'testuser',
-    realName: 'Test User',
+    nickName: 'Test User',
     deptId: 1n,
     roleKeys: ['user'],
     permissionCodes: new Set(),
