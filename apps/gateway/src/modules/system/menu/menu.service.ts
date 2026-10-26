@@ -1,5 +1,9 @@
+import type { MenuModel } from '@app/database/generated/prisma/models/Menu.js';
+import type { MenuRouteMetaDto } from './dto/menu-route.dto.js';
 import { parseId } from '@app/common/utils/bigint.util.js';
+import { andWhere } from '@app/common/utils/where.util.js';
 import { PrismaService } from '@app/database';
+import { isSuperAdmin } from '@app/permission';
 import {
   BadRequestException,
   ConflictException,
@@ -9,9 +13,25 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CreateMenuDto } from './dto/create-menu.dto.js';
+import { ListMenuDto } from './dto/list-menu.dto.js';
 import { MenuResponseDto, MenuTreeDto } from './dto/menu-response.dto.js';
+import { MenuRouteDto } from './dto/menu-route.dto.js';
 import { RoleMenuTreeDto } from './dto/role-menu-tree.dto.js';
 import { UpdateMenuDto } from './dto/update-menu.dto.js';
+
+/** 目录（M）使用的布局组件标识，对应前端 `layoutMap.BasicLayout` */
+const BASIC_LAYOUT_COMPONENT = 'BasicLayout';
+
+/** 外链菜单使用的 iframe 容器组件标识，对应前端 `layoutMap.IFrameView` */
+const IFRAME_COMPONENT = 'IFrameView';
+
+/**
+ * C 类型菜单未配置 component 时的兜底页面。
+ *
+ * 不能留空字符串：前端 `convertRoutes` 只在 `component` 为真值时才做映射，
+ * 空值会原样交给 vue-router，渲染阶段直接报错。指向 404 页让数据问题可见。
+ */
+const NOT_FOUND_COMPONENT = '/_core/fallback/not-found.vue';
 
 /**
  * 菜单服务
@@ -42,6 +62,241 @@ export class MenuService {
     );
 
     return this.buildTree(menuDtos, 0n);
+  }
+
+  /**
+   * 获取菜单列表（表格用，扁平结构）
+   *
+   * 与 `getMenuTree()` 的区别：
+   * - 本方法返回**扁平数组**，包含 F 类型（按钮），供菜单管理表格渲染；
+   *   前端用 `row-key="menuId"` + `tree-props` 自己拼树。
+   * - 不分页：菜单表是树表，分页会把父子切到不同页，树永远拼不完整。
+   *
+   * @param dto 查询条件（菜单名称模糊、状态、是否显示、父菜单 ID）
+   * @returns 扁平菜单列表，按 `orderNum`、`menuId` 升序
+   */
+  async listMenus(dto: ListMenuDto): Promise<MenuResponseDto[]> {
+    const where = andWhere(
+      dto.menuName ? { menuName: { contains: dto.menuName } } : null,
+      dto.status ? { status: dto.status } : null,
+      dto.visible ? { visible: dto.visible } : null,
+      dto.parentId === undefined || dto.parentId === ''
+        ? null
+        : { parentId: parseId(dto.parentId, 'parentId') },
+    );
+
+    const menus = await this.prisma.menu.findMany({
+      where,
+      orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
+    });
+
+    return menus.map((menu) =>
+      plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true }),
+    );
+  }
+
+  /**
+   * 获取当前用户可访问的菜单路由（vben 后端路由模式）
+   *
+   * 与 `getMenuTree()` / `listMenus()` 的区别：本方法返回的是**前端路由记录**，
+   * 不是菜单表数据。字段名与前端 `RouteRecordStringComponent` 一一对应，
+   * 前端 `generateRoutesByBackend` 拿到后直接 `router.addRoute()`，不做任何映射。
+   *
+   * 过滤规则：
+   * 1. 只取 `status = '0'`（启用）的 M / C 节点，F（按钮）不是路由，不返回。
+   * 2. 超管（`superadmin`）返回全部；其他角色按 `sys_role_menu` 取并集。
+   * 3. 授权集合会**补全祖先链**：只授权了子菜单没授权目录时，自动补上父目录，
+   *    否则子菜单会因为父节点缺失在构建时被丢掉。
+   * 4. 父节点被停用 → 整枝丢弃（与表格展示口径一致）。
+   *
+   * @param userId 当前用户 ID
+   * @param roleKeys 当前用户有效角色键列表，用于判定超管
+   * @returns 前端路由树（顶级为绝对路径，子级为相对路径）
+   */
+  async getUserMenuRoutes(
+    userId: bigint,
+    roleKeys: readonly string[],
+  ): Promise<MenuRouteDto[]> {
+    // 菜单表规模是百级，一次性取出后在内存里做过滤与建树，
+    // 避免按层级递归查库（N+1）。
+    const menus = await this.prisma.menu.findMany({
+      where: { status: '0', menuType: { in: ['M', 'C'] } },
+      orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
+    });
+
+    if (menus.length === 0) {
+      return [];
+    }
+
+    const grantedIds = await this.resolveGrantedMenuIds(userId, roleKeys);
+    const menuById = new Map(menus.map((menu) => [menu.menuId.toString(), menu]));
+
+    let included: MenuModel[];
+    if (grantedIds === null) {
+      // 超管：全量
+      included = menus;
+    } else {
+      const keep = new Set<string>();
+      for (const menuId of grantedIds) {
+        let cursor = menuById.get(menuId);
+        while (cursor) {
+          const key = cursor.menuId.toString();
+          if (keep.has(key)) {
+            break;
+          }
+          keep.add(key);
+          const parentKey = cursor.parentId.toString();
+          cursor = parentKey === '0' ? undefined : menuById.get(parentKey);
+        }
+      }
+      included = menus.filter((menu) => keep.has(menu.menuId.toString()));
+    }
+
+    // 建树前先按 parentId 分组，同时丢掉"父节点不在结果集里"的孤儿节点
+    const includedIds = new Set(included.map((menu) => menu.menuId.toString()));
+    const childrenOf = new Map<string, MenuModel[]>();
+    const roots: MenuModel[] = [];
+
+    for (const menu of included) {
+      const parentKey = menu.parentId.toString();
+      if (parentKey === '0') {
+        roots.push(menu);
+        continue;
+      }
+      if (!includedIds.has(parentKey)) {
+        continue;
+      }
+      const siblings = childrenOf.get(parentKey) ?? [];
+      siblings.push(menu);
+      childrenOf.set(parentKey, siblings);
+    }
+
+    // 路由名称必须全局唯一，跨整棵树共享一个 used 集合
+    const usedNames = new Set<string>();
+
+    return roots.map(
+      (menu) => this.buildRouteNode(menu, '', childrenOf, usedNames).route,
+    );
+  }
+
+  /**
+   * 解析当前用户被授权的菜单 ID 集合
+   *
+   * @returns `null` 表示超管（不做过滤）；空集合表示没有任何授权
+   */
+  private async resolveGrantedMenuIds(
+    userId: bigint,
+    roleKeys: readonly string[],
+  ): Promise<null | Set<string>> {
+    if (isSuperAdmin(roleKeys)) {
+      return null;
+    }
+
+    const roles = await this.prisma.userRole.findMany({
+      where: { userId, role: { status: '0', delFlag: '0' } },
+      select: { roleId: true },
+    });
+
+    if (roles.length === 0) {
+      return new Set<string>();
+    }
+
+    const roleMenus = await this.prisma.roleMenu.findMany({
+      where: { roleId: { in: roles.map((role) => role.roleId) } },
+      select: { menuId: true },
+    });
+
+    return new Set(roleMenus.map((roleMenu) => roleMenu.menuId.toString()));
+  }
+
+  /**
+   * 把单个菜单节点转换成前端路由记录
+   *
+   * @param menu 菜单行
+   * @param parentAbsolutePath 父节点的绝对路径，顶级传空字符串
+   * @param childrenOf 已按 parentId 分组的子节点表
+   * @param usedNames 已占用的路由名称集合
+   * @returns 该节点的绝对路径与路由记录
+   */
+  private buildRouteNode(
+    menu: MenuModel,
+    parentAbsolutePath: string,
+    childrenOf: Map<string, MenuModel[]>,
+    usedNames: Set<string>,
+  ): { absolutePath: string; route: MenuRouteDto } {
+    const rawPath = (menu.path ?? '').trim();
+    const isDirectory = menu.menuType === 'M';
+    // isFrame = '0' 表示"是外链"，此时 path 存的是 http(s) 地址
+    const isExternal = menu.isFrame === '0' && /^https?:\/\//i.test(rawPath);
+
+    let absolutePath: string;
+    let routePath: string;
+
+    if (isExternal) {
+      // URL 不能直接当路由路径，用 menuId 生成稳定的本地路径，
+      // 真实地址放进 meta.iframeSrc
+      routePath = `/iframe/${menu.menuId}`;
+      absolutePath = routePath;
+    } else if (rawPath.startsWith('/')) {
+      // 库里存的是绝对路径：原样保留，vue-router 允许子路由使用绝对路径
+      routePath = rawPath;
+      absolutePath = rawPath;
+    } else {
+      // 相对路径（RuoYi 默认写法），与父路径拼接
+      routePath = rawPath || `menu-${menu.menuId}`;
+      absolutePath = parentAbsolutePath
+        ? `${parentAbsolutePath}/${routePath}`
+        : `/${routePath}`;
+    }
+
+    let component: string;
+    if (isExternal) {
+      component = IFRAME_COMPONENT;
+    } else if (isDirectory) {
+      component = BASIC_LAYOUT_COMPONENT;
+    } else {
+      component = menu.component?.trim() || NOT_FOUND_COMPONENT;
+    }
+
+    const meta: MenuRouteMetaDto = {
+      title: menu.menuName,
+      order: menu.orderNum,
+      hideInMenu: menu.visible === '1',
+    };
+
+    if (menu.icon) {
+      meta.icon = menu.icon;
+    }
+    if (!isDirectory) {
+      // is_cache = '0' 表示"缓存"
+      meta.keepAlive = menu.isCache === '0';
+    }
+    if (isExternal) {
+      meta.iframeSrc = rawPath;
+    }
+    const query = parseMenuQuery(menu.query);
+    if (query) {
+      meta.query = query;
+    }
+
+    const route: MenuRouteDto = {
+      name: buildRouteName(absolutePath, menu.menuId, usedNames),
+      path: routePath,
+      component,
+      meta,
+    };
+
+    const childMenus = childrenOf.get(menu.menuId.toString()) ?? [];
+    if (childMenus.length > 0) {
+      const children = childMenus.map((child) =>
+        this.buildRouteNode(child, absolutePath, childrenOf, usedNames),
+      );
+      route.children = children.map((child) => child.route);
+      // 目录被点击时跳到第一个子菜单，避免落在空白页
+      route.redirect = children[0]!.absolutePath;
+    }
+
+    return { absolutePath, route };
   }
 
   /**
@@ -561,4 +816,57 @@ function parsePermissionCode(code: string): { resource: string | null; action: s
     resource: segments[segments.length - 2] ?? null,
     action: segments[segments.length - 1] ?? null,
   };
+}
+
+/**
+ * 由绝对路径生成前端路由名称
+ *
+ * 规则：`/system/user` → `SystemUser`，`/system/login-log` → `SystemLoginLog`。
+ * 名称必须全局唯一 —— 前端 `generateMenus` 用 `router.getRoutes()` 的 name→path
+ * 映射反查菜单真实路径，重名会导致点击菜单跳错页面，因此冲突时追加菜单 ID。
+ *
+ * @param absolutePath 路由绝对路径
+ * @param menuId 菜单 ID（冲突兜底后缀）
+ * @param used 已占用的名称集合，会被就地写入
+ */
+function buildRouteName(absolutePath: string, menuId: bigint, used: Set<string>): string {
+  const base =
+    absolutePath
+      .split('/')
+      .filter(Boolean)
+      .map((segment) =>
+        segment.replace(/[^a-z0-9]+(.)?/gi, (_, char: string) =>
+          char ? char.toUpperCase() : ''),
+      )
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join('') || `Menu${menuId}`;
+
+  const name = used.has(base) ? `${base}${menuId}` : base;
+  used.add(name);
+
+  return name;
+}
+
+/**
+ * 解析 `sys_menu.query` 的 JSON 字符串
+ *
+ * 约定存 `{"id":"1"}` 这类对象。历史脏数据（`id=1` 形式）或非法 JSON 直接忽略：
+ * 一个字段解析失败不应该让整个菜单接口 500。
+ */
+function parseMenuQuery(raw: null | string | undefined): Record<string, string> | undefined {
+  const text = raw?.trim();
+  if (!text) {
+    return undefined;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, string>;
+    }
+  } catch {
+    // 忽略非法 JSON
+  }
+
+  return undefined;
 }

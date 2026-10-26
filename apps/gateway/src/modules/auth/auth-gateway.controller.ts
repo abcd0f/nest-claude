@@ -25,7 +25,7 @@ import { plainToInstance } from 'class-transformer';
  * - POST /auth/login       用户登录（记录登录成功/失败日志）
  * - POST /auth/logout      用户登出（记录登出日志）
  * - POST /auth/refresh     刷新访问令牌
- * - GET  /auth/me          获取当前用户信息
+ * - GET  /auth/info        获取当前用户信息
  * - GET  /auth/permissions 获取当前用户权限编码
  *
  * 注意：返回值一律返回裸业务数据，统一响应体由全局 ResponseInterceptor 包装，
