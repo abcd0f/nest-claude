@@ -5,7 +5,6 @@ import { DatabaseModule } from '@app/database';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
-import { AuthController } from './controllers/auth.controller.js';
 import { AuthGuard } from './guards/auth.guard.js';
 import { TokenService } from './services/token.service.js';
 
@@ -16,13 +15,15 @@ import { TokenService } from './services/token.service.js';
  * - 用户登录和身份验证
  * - JWT Token 签发和验证
  * - 会话管理
- * - 认证 API 端点
+ *
+ * 不提供 HTTP 控制器：`/auth/*` 路由统一由 apps 层的
+ * `AuthGatewayController` 注册。本模块若再注册控制器，
+ * 会导致同一路由被注册两次（Fastify FST_ERR_DUPLICATED_ROUTE）。
  *
  * 导出：
  * - AuthService：认证业务逻辑
  * - TokenService：Token 管理
  * - AuthGuard：全局认证守卫
- * - AuthController：认证 API
  *
  * 依赖：
  * - DatabaseModule：数据库访问
@@ -76,7 +77,6 @@ import { TokenService } from './services/token.service.js';
     }),
   ],
   providers: [TokenService, AuthService, AuthGuard],
-  controllers: [AuthController],
   exports: [AuthService, TokenService, AuthGuard],
 })
 export class AuthModule {}

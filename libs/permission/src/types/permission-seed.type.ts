@@ -81,8 +81,11 @@ export interface PermissionSyncResult {
 
 /**
  * 权限诊断结果
+ *
+ * 注意：与 `PermissionCheckResult`（守卫判定结果 `{ allowed, reason }`）区分命名，
+ * 避免在 `@app/permission` 聚合导出中同名遮蔽。
  */
-export interface PermissionCheckResult {
+export interface PermissionDiagnosticResult {
   /**
    * 总权限数
    */

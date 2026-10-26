@@ -1,4 +1,4 @@
-import { PermissionSeedDefinition } from '../types/permission-seed.type';
+import { PermissionSeedDefinition } from '../types/permission-seed.type.js';
 
 /**
  * 系统权限种子数据

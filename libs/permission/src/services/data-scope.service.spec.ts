@@ -9,11 +9,14 @@ describe('dataScopeService', () => {
 
   const mockPrisma = {
     userRole: {
-      findMany: jest.fn(),
+      findMany: vi.fn(),
     },
     dept: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    user: {
+      findMany: vi.fn(),
     },
   };
 
@@ -33,7 +36,7 @@ describe('dataScopeService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('resolveUserScope', () => {
@@ -324,11 +327,42 @@ describe('dataScopeService', () => {
     });
 
     it('应该为 DEPT 范围构建操作人部门条件', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([{ userId: 1n }, { userId: 2n }]);
+
       const condition = await service.buildOperLogWhereCondition({ kind: DataScope.DEPT }, 10n, 1n);
 
-      expect(condition).toEqual({
-        operUser: { deptId: 10n },
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
+        where: { deptId: { in: [10n] }, delFlag: '0' },
+        select: { userId: true },
       });
+      expect(condition).toEqual({
+        operUserId: { in: [1n, 2n] },
+      });
+    });
+
+    it('应该为 DEPT 范围且部门下无用户时返回不匹配条件', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([]);
+
+      const condition = await service.buildOperLogWhereCondition({ kind: DataScope.DEPT }, 10n, 1n);
+
+      expect(condition).toEqual({ operUserId: { equals: -1n } });
+    });
+
+    it('应该为 DEPT_AND_CHILD 范围按部门子树下的用户过滤', async () => {
+      mockPrisma.dept.findMany.mockResolvedValue([{ deptId: 10n }, { deptId: 11n }]);
+      mockPrisma.user.findMany.mockResolvedValue([{ userId: 5n }]);
+
+      const condition = await service.buildOperLogWhereCondition(
+        { kind: DataScope.DEPT_AND_CHILD, deptIds: [] },
+        10n,
+        1n,
+      );
+
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
+        where: { deptId: { in: [10n, 11n] }, delFlag: '0' },
+        select: { userId: true },
+      });
+      expect(condition).toEqual({ operUserId: { in: [5n] } });
     });
 
     it('应该为 SELF 范围构建操作人 ID 条件', async () => {

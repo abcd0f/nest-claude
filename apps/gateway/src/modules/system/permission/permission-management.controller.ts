@@ -1,7 +1,7 @@
 import {
   Permission,
   PERMISSION_SEEDS,
-  PermissionCheckResult,
+  PermissionDiagnosticResult,
   PermissionService,
   PermissionSyncResult,
   PermissionSyncService,
@@ -39,7 +39,7 @@ export class PermissionManagementController {
   @Permission('system:permission:check')
   @ApiOperation({ summary: '权限诊断检查' })
   @ApiResponse({ status: 200, description: '权限诊断结果' })
-  async check(): Promise<PermissionCheckResult> {
+  async check(): Promise<PermissionDiagnosticResult> {
     this.logger.log('Running permission check');
     return this.syncService.checkPermissions();
   }

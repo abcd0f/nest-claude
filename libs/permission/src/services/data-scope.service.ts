@@ -1,6 +1,6 @@
+import type { Prisma } from '@app/database/generated/prisma/client.js';
 import { PrismaService } from '@app/database';
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { DataScope } from '../enums/data-scope.enum.js';
 import { ResolvedDataScope } from '../types/resolved-data-scope.type.js';
 
@@ -140,7 +140,7 @@ export class DataScopeService {
     scope: ResolvedDataScope,
     userDeptId: bigint | null,
     userId: bigint,
-  ): Promise<Prisma.WhereInput> {
+  ): Promise<Prisma.UserWhereInput> {
     switch (scope.kind) {
       case DataScope.ALL:
         // 全部数据，无条件限制
@@ -151,13 +151,14 @@ export class DataScopeService {
         // 如果用户没有部门，无法匹配任何记录
         return userDeptId ? { deptId: userDeptId } : { deptId: { equals: -1n } };
 
-      case DataScope.DEPT_AND_CHILD:
+      case DataScope.DEPT_AND_CHILD: {
         // 本部门及以下，需要查询子部门
         if (!userDeptId) {
           return { deptId: { equals: -1n } };
         }
         const deptIds = await this.getDeptChildrenIds(userDeptId);
         return { deptId: { in: deptIds } };
+      }
 
       case DataScope.SELF:
         // 仅本人，按用户 ID 过滤
@@ -189,7 +190,7 @@ export class DataScopeService {
     scope: ResolvedDataScope,
     userDeptId: bigint | null,
     userId: bigint,
-  ): Promise<Prisma.WhereInput> {
+  ): Promise<Prisma.DeptWhereInput> {
     switch (scope.kind) {
       case DataScope.ALL:
         return {};
@@ -198,13 +199,14 @@ export class DataScopeService {
         // 仅本部门
         return userDeptId ? { deptId: userDeptId } : { deptId: { equals: -1n } };
 
-      case DataScope.DEPT_AND_CHILD:
+      case DataScope.DEPT_AND_CHILD: {
         // 本部门及以下
         if (!userDeptId) {
           return { deptId: { equals: -1n } };
         }
         const deptIds = await this.getDeptChildrenIds(userDeptId);
         return { deptId: { in: deptIds } };
+      }
 
       case DataScope.SELF:
         // 部门资源中，SELF 通常表示无法访问（除非是部门负责人）
@@ -223,7 +225,9 @@ export class DataScopeService {
   /**
    * 为操作日志资源构建 where 条件
    *
-   * 操作日志通常有 operUserId 字段表示操作人
+   * 注意：`OperLog` 模型只有 `operUserId` 外键，没有 `operUser` 关系字段，
+   * 因此无法直接做 `{ operUser: { deptId } }` 这种关系过滤。
+   * 这里先把「部门范围」翻译成「该范围内的用户 ID 列表」，再按 `operUserId in` 过滤。
    *
    * @param scope 已解析的数据范围
    * @param userDeptId 用户所在部门 ID
@@ -234,35 +238,70 @@ export class DataScopeService {
     scope: ResolvedDataScope,
     userDeptId: bigint | null,
     userId: bigint,
-  ): Promise<Prisma.WhereInput> {
+  ): Promise<Prisma.OperLogWhereInput> {
     // 操作日志按操作人的部门范围过滤
     switch (scope.kind) {
       case DataScope.ALL:
         return {};
 
-      case DataScope.DEPT:
-        return userDeptId
-          ? { operUser: { deptId: userDeptId } }
-          : { operUser: { deptId: { equals: -1n } } };
-
-      case DataScope.DEPT_AND_CHILD:
+      case DataScope.DEPT: {
         if (!userDeptId) {
-          return { operUser: { deptId: { equals: -1n } } };
+          return { operUserId: { equals: -1n } };
+        }
+        const operUserIds = await this.getUserIdsByDeptIds([userDeptId]);
+        return operUserIds.length > 0
+          ? { operUserId: { in: operUserIds } }
+          : { operUserId: { equals: -1n } };
+      }
+
+      case DataScope.DEPT_AND_CHILD: {
+        if (!userDeptId) {
+          return { operUserId: { equals: -1n } };
         }
         const deptIds = await this.getDeptChildrenIds(userDeptId);
-        return { operUser: { deptId: { in: deptIds } } };
+        const operUserIds = await this.getUserIdsByDeptIds(deptIds);
+        return operUserIds.length > 0
+          ? { operUserId: { in: operUserIds } }
+          : { operUserId: { equals: -1n } };
+      }
 
       case DataScope.SELF:
         return { operUserId: userId };
 
-      case DataScope.CUSTOM:
-        return scope.deptIds.length > 0
-          ? { operUser: { deptId: { in: scope.deptIds } } }
-          : { operUser: { deptId: { equals: -1n } } };
+      case DataScope.CUSTOM: {
+        if (scope.deptIds.length === 0) {
+          return { operUserId: { equals: -1n } };
+        }
+        const operUserIds = await this.getUserIdsByDeptIds(scope.deptIds);
+        return operUserIds.length > 0
+          ? { operUserId: { in: operUserIds } }
+          : { operUserId: { equals: -1n } };
+      }
 
       default:
-        return { operUser: { deptId: { equals: -1n } } };
+        return { operUserId: { equals: -1n } };
     }
+  }
+
+  /**
+   * 查询指定部门（可多个）下的所有用户 ID
+   *
+   * 用于把「部门范围」翻译成「用户范围」，供只持有 userId 外键的资源（如 OperLog）过滤。
+   *
+   * @param deptIds 部门 ID 列表
+   * @returns 这些部门下的用户 ID 列表
+   */
+  private async getUserIdsByDeptIds(deptIds: bigint[]): Promise<bigint[]> {
+    if (deptIds.length === 0) {
+      return [];
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { deptId: { in: deptIds }, delFlag: '0' },
+      select: { userId: true },
+    });
+
+    return users.map((u) => u.userId);
   }
 
   /**
@@ -329,21 +368,17 @@ export class DataScopeService {
    * @param conditions 条件列表
    * @returns 合并后的 where 条件
    */
-  static mergeWhereConditions(
-    ...conditions: (Prisma.WhereInput | null | undefined)[]
-  ): Prisma.WhereInput {
-    const valid = conditions.filter((c) => c !== null && c !== undefined);
+  static mergeWhereConditions<T extends object>(...conditions: (T | null | undefined)[]): T {
+    const valid = conditions.filter((c): c is T => c !== null && c !== undefined);
 
     if (valid.length === 0) {
-      return {};
+      return {} as T;
     }
 
     if (valid.length === 1) {
       return valid[0]!;
     }
 
-    return {
-      AND: valid,
-    };
+    return { AND: valid } as T;
   }
 }

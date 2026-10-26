@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { PasswordHashService } from '@app/crypto';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
@@ -55,13 +55,14 @@ export class AuthService {
    */
   async login(dto: LoginDto, clientIp?: string): Promise<LoginResultDto> {
     // 1. 查询用户
-    const user = await this.prisma.user.findUnique({
-      where: { username: dto.username },
+    // 注意：sys_user.user_name 当前没有唯一约束，因此只能用 findFirst
+    const user = await this.prisma.user.findFirst({
+      where: { userName: dto.username },
       select: {
         userId: true,
-        username: true,
+        userName: true,
         password: true,
-        realName: true,
+        nickName: true,
         status: true,
         delFlag: true,
       },
@@ -71,12 +72,12 @@ export class AuthService {
     // 如果用户不存在，使用 dummy hash
     let passwordValid = false;
     if (user) {
-      passwordValid = await this.passwordHashService.verify(dto.password, user.password);
+      passwordValid = await this.passwordHashService.verifyPassword(user.password, dto.password);
     } else {
       // Dummy hash：防止通过登录时间差异来枚举用户
-      await this.passwordHashService.verify(
-        dto.password,
+      await this.passwordHashService.verifyPassword(
         '$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        dto.password,
       );
     }
 
@@ -99,8 +100,8 @@ export class AuthService {
     }
 
     // 4. 创建会话和签发 Token
-    const sessionId = uuidv4();
-    const jti = uuidv4();
+    const sessionId = randomUUID();
+    const jti = randomUUID();
     const userId = user.userId.toString();
 
     const accessToken = await this.tokenService.signAccessToken(userId, sessionId, jti);
@@ -111,7 +112,7 @@ export class AuthService {
       where: { userId: user.userId },
       data: {
         loginIp: clientIp || null,
-        loginTime: new Date(),
+        loginDate: new Date(),
       },
     });
 
@@ -127,8 +128,8 @@ export class AuthService {
         tokenType: 'Bearer',
       },
       userId,
-      username: user.username,
-      realName: user.realName,
+      username: user.userName,
+      realName: user.nickName,
     };
   }
 
@@ -154,7 +155,7 @@ export class AuthService {
     let payload;
     try {
       payload = await this.tokenService.verifyRefreshToken(refreshToken);
-    } catch (error) {
+    } catch {
       this.logger.warn('Failed to verify refresh token');
       throw new UnauthorizedException('刷新令牌无效或已过期');
     }
@@ -232,8 +233,8 @@ export class AuthService {
       where: { userId },
       select: {
         userId: true,
-        username: true,
-        realName: true,
+        userName: true,
+        nickName: true,
         deptId: true,
         status: true,
         delFlag: true,
@@ -252,8 +253,8 @@ export class AuthService {
 
     return {
       userId: user.userId,
-      username: user.username,
-      realName: user.realName,
+      username: user.userName,
+      realName: user.nickName,
       deptId: user.deptId,
       roleKeys,
       permissionCodes,
@@ -282,11 +283,11 @@ export class AuthService {
     username: string,
     password: string,
   ): Promise<{ userId: bigint; username: string } | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
+    const user = await this.prisma.user.findFirst({
+      where: { userName: username },
       select: {
         userId: true,
-        username: true,
+        userName: true,
         password: true,
         status: true,
         delFlag: true,
@@ -297,7 +298,7 @@ export class AuthService {
       return null;
     }
 
-    const isPasswordValid = await this.passwordHashService.verify(password, user.password);
+    const isPasswordValid = await this.passwordHashService.verifyPassword(user.password, password);
 
     if (!isPasswordValid) {
       return null;
@@ -305,7 +306,7 @@ export class AuthService {
 
     return {
       userId: user.userId,
-      username: user.username,
+      username: user.userName,
     };
   }
 }

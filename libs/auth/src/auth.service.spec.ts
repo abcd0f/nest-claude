@@ -2,28 +2,29 @@ import { PasswordHashService } from '@app/crypto';
 import { PrismaService } from '@app/database';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { type Mocked, vi } from 'vitest';
 import { AuthService } from './auth.service.js';
 import { TokenService } from './services/token.service.js';
 
 describe('authService', () => {
   let service: AuthService;
-  let tokenService: jest.Mocked<TokenService>;
-  let prismaService: jest.Mocked<PrismaService>;
-  let passwordHashService: jest.Mocked<PasswordHashService>;
+  let tokenService: Mocked<TokenService>;
+  let prismaService: Mocked<PrismaService>;
+  let passwordHashService: Mocked<PasswordHashService>;
 
   const mockUser = {
     userId: 1n,
-    username: 'admin',
+    userName: 'admin',
     password: 'hashed-password',
-    realName: 'Admin User',
+    nickName: 'Admin User',
     status: '0' as const,
     delFlag: '0' as const,
   };
 
   const mockFullUser = {
     userId: 1n,
-    username: 'admin',
-    realName: 'Admin User',
+    userName: 'admin',
+    nickName: 'Admin User',
     deptId: null,
     status: '0' as const,
     delFlag: '0' as const,
@@ -37,37 +38,38 @@ describe('authService', () => {
         {
           provide: TokenService,
           useValue: {
-            signAccessToken: jest.fn(),
-            signRefreshToken: jest.fn(),
-            verifyAccessToken: jest.fn(),
-            verifyRefreshToken: jest.fn(),
-            extractUserId: jest.fn(),
-            getAccessTokenExpiresInMs: jest.fn().mockReturnValue(3600000),
-            getRefreshTokenExpiresInMs: jest.fn().mockReturnValue(604800000),
+            signAccessToken: vi.fn(),
+            signRefreshToken: vi.fn(),
+            verifyAccessToken: vi.fn(),
+            verifyRefreshToken: vi.fn(),
+            extractUserId: vi.fn(),
+            getAccessTokenExpiresInMs: vi.fn().mockReturnValue(3600000),
+            getRefreshTokenExpiresInMs: vi.fn().mockReturnValue(604800000),
           },
         },
         {
           provide: PrismaService,
           useValue: {
             user: {
-              findUnique: jest.fn(),
-              update: jest.fn(),
+              findUnique: vi.fn(),
+              findFirst: vi.fn(),
+              update: vi.fn(),
             },
           },
         },
         {
           provide: PasswordHashService,
           useValue: {
-            verify: jest.fn(),
+            verifyPassword: vi.fn(),
           },
         },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    tokenService = module.get(TokenService) as jest.Mocked<TokenService>;
-    prismaService = module.get(PrismaService) as jest.Mocked<PrismaService>;
-    passwordHashService = module.get(PasswordHashService) as jest.Mocked<PasswordHashService>;
+    tokenService = module.get(TokenService) as Mocked<TokenService>;
+    prismaService = module.get(PrismaService) as Mocked<PrismaService>;
+    passwordHashService = module.get(PasswordHashService) as Mocked<PasswordHashService>;
   });
 
   it('should be defined', () => {
@@ -78,8 +80,8 @@ describe('authService', () => {
     it('should login successfully with correct credentials', async () => {
       const loginDto = { username: 'admin', password: 'password123' };
 
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
-      passwordHashService.verify.mockResolvedValue(true);
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      passwordHashService.verifyPassword.mockResolvedValue(true);
       tokenService.signAccessToken.mockResolvedValue('access-token');
       tokenService.signRefreshToken.mockResolvedValue('refresh-token');
       prismaService.user.update.mockResolvedValue(mockUser);
@@ -99,25 +101,28 @@ describe('authService', () => {
         realName: 'Admin User',
       });
 
-      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { username: 'admin' },
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { userName: 'admin' },
         select: {
           userId: true,
-          username: true,
+          userName: true,
           password: true,
-          realName: true,
+          nickName: true,
           status: true,
           delFlag: true,
         },
       });
 
-      expect(passwordHashService.verify).toHaveBeenCalledWith('password123', 'hashed-password');
+      expect(passwordHashService.verifyPassword).toHaveBeenCalledWith(
+        'hashed-password',
+        'password123',
+      );
 
       expect(prismaService.user.update).toHaveBeenCalledWith({
         where: { userId: 1n },
         data: {
           loginIp: '127.0.0.1',
-          loginTime: expect.any(Date),
+          loginDate: expect.any(Date),
         },
       });
     });
@@ -125,8 +130,8 @@ describe('authService', () => {
     it('should throw UnauthorizedException for wrong password', async () => {
       const loginDto = { username: 'admin', password: 'wrongpassword' };
 
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
-      passwordHashService.verify.mockResolvedValue(false);
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      passwordHashService.verifyPassword.mockResolvedValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
@@ -134,8 +139,8 @@ describe('authService', () => {
     it('should throw UnauthorizedException for non-existent user', async () => {
       const loginDto = { username: 'nonexistent', password: 'password123' };
 
-      prismaService.user.findUnique.mockResolvedValue(null);
-      passwordHashService.verify.mockResolvedValue(false);
+      prismaService.user.findFirst.mockResolvedValue(null);
+      passwordHashService.verifyPassword.mockResolvedValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
@@ -144,8 +149,8 @@ describe('authService', () => {
       const loginDto = { username: 'admin', password: 'password123' };
       const disabledUser = { ...mockUser, status: '1' as const };
 
-      prismaService.user.findUnique.mockResolvedValue(disabledUser);
-      passwordHashService.verify.mockResolvedValue(true);
+      prismaService.user.findFirst.mockResolvedValue(disabledUser);
+      passwordHashService.verifyPassword.mockResolvedValue(true);
 
       await expect(service.login(loginDto)).rejects.toThrow(BadRequestException);
     });
@@ -154,8 +159,8 @@ describe('authService', () => {
       const loginDto = { username: 'admin', password: 'password123' };
       const deletedUser = { ...mockUser, delFlag: '1' as const };
 
-      prismaService.user.findUnique.mockResolvedValue(deletedUser);
-      passwordHashService.verify.mockResolvedValue(true);
+      prismaService.user.findFirst.mockResolvedValue(deletedUser);
+      passwordHashService.verifyPassword.mockResolvedValue(true);
 
       await expect(service.login(loginDto)).rejects.toThrow(BadRequestException);
     });
@@ -214,8 +219,8 @@ describe('authService', () => {
 
   describe('validateUser', () => {
     it('should validate user with correct credentials', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
-      passwordHashService.verify.mockResolvedValue(true);
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      passwordHashService.verifyPassword.mockResolvedValue(true);
 
       const result = await service.validateUser('admin', 'password123');
 
@@ -226,7 +231,7 @@ describe('authService', () => {
     });
 
     it('should return null for non-existent user', async () => {
-      prismaService.user.findUnique.mockResolvedValue(null);
+      prismaService.user.findFirst.mockResolvedValue(null);
 
       const result = await service.validateUser('nonexistent', 'password123');
 
@@ -234,8 +239,8 @@ describe('authService', () => {
     });
 
     it('should return null for wrong password', async () => {
-      prismaService.user.findUnique.mockResolvedValue(mockUser);
-      passwordHashService.verify.mockResolvedValue(false);
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      passwordHashService.verifyPassword.mockResolvedValue(false);
 
       const result = await service.validateUser('admin', 'wrongpassword');
 

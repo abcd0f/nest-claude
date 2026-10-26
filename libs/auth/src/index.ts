@@ -1,6 +1,5 @@
 export * from './auth.module.js';
 export * from './auth.service.js';
-export * from './controllers/auth.controller.js';
 export * from './decorators/current-user.decorator.js';
 export * from './decorators/public.decorator.js';
 export * from './dto/login-result.dto.js';

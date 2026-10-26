@@ -1,10 +1,10 @@
 import { PrismaService } from '@app/database';
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  PermissionCheckResult,
+  PermissionDiagnosticResult,
   PermissionSeedDefinition,
   PermissionSyncResult,
-} from '../types/permission-seed.type';
+} from '../types/permission-seed.type.js';
 
 /**
  * 权限同步服务
@@ -130,7 +130,7 @@ export class PermissionSyncService {
             });
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(`Failed to sync permission ${seed.code}: ${error.message}`);
         result.details.push({
           code: seed.code,
@@ -170,7 +170,7 @@ export class PermissionSyncService {
    *
    * @returns 诊断结果
    */
-  async checkPermissions(): Promise<PermissionCheckResult> {
+  async checkPermissions(): Promise<PermissionDiagnosticResult> {
     this.logger.log('Starting permission check');
 
     // 1. 统计权限数量
@@ -221,7 +221,7 @@ export class PermissionSyncService {
       },
     });
 
-    const result: PermissionCheckResult = {
+    const result: PermissionDiagnosticResult = {
       total,
       enabled,
       disabled,

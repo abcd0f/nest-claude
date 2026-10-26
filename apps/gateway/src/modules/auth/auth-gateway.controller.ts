@@ -1,19 +1,36 @@
+import type { UserPrincipal } from '@app/auth';
 import { Audit, LoginLogService, OperationType } from '@app/audit';
-import { AuthService, LoginDto, Public } from '@app/auth';
+import { AuthService, CurrentUser, LoginDto, Public } from '@app/auth';
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 /**
- * 认证控制器
- * 提供登录、登出、刷新Token等接口
+ * 认证控制器（网关层唯一 HTTP 入口）
+ *
+ * 这是 `/auth/*` 的唯一控制器。libs/auth 只提供 Service / Guard，
+ * 不再注册任何 controller —— 否则同一路由会被注册两次，
+ * Fastify 会抛 FST_ERR_DUPLICATED_ROUTE。
+ *
+ * 提供以下接口：
+ * - POST /auth/login       用户登录（记录登录成功/失败日志）
+ * - POST /auth/logout      用户登出（记录登出日志）
+ * - POST /auth/refresh     刷新访问令牌
+ * - GET  /auth/me          获取当前用户信息
+ * - GET  /auth/permissions 获取当前用户权限编码
+ *
+ * 注意：返回值一律返回裸业务数据，统一响应体由全局 ResponseInterceptor 包装，
+ * 不要在控制器里手写 { code, data, message }，否则会被二次包裹。
  */
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthGatewayController {
   constructor(
@@ -27,6 +44,7 @@ export class AuthGatewayController {
   @Post('login')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '用户登录' })
   async login(@Body() loginDto: LoginDto, @Req() request: any) {
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
@@ -37,11 +55,7 @@ export class AuthGatewayController {
       // 记录登录成功日志
       await this.loginLogService.logSuccess(loginDto.username, clientIp, userAgent);
 
-      return {
-        code: 200,
-        message: '登录成功',
-        data: result,
-      };
+      return result;
     } catch (error) {
       // 记录登录失败日志
       const reason = error instanceof Error ? error.message : '登录失败';
@@ -57,6 +71,8 @@ export class AuthGatewayController {
   @Post('logout')
   @Audit({ title: '用户登出', operationType: OperationType.LOGOUT })
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '用户登出' })
   async logout(@Req() request: any) {
     const user = (request as unknown as { user?: { username?: string } }).user;
     const clientIp = this.extractIp(request);
@@ -76,18 +92,37 @@ export class AuthGatewayController {
   @Post('refresh')
   @Public()
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '刷新访问令牌' })
   async refresh(@Body('refreshToken') refreshToken: string) {
     if (!refreshToken) {
       throw new UnauthorizedException('缺少刷新令牌');
     }
 
-    const result = await this.authService.refreshToken(refreshToken);
+    return this.authService.refreshToken(refreshToken);
+  }
 
-    return {
-      code: 200,
-      message: 'Token刷新成功',
-      data: result,
-    };
+  /**
+   * 获取当前用户信息
+   *
+   * 用户主体由全局 AuthGuard 校验并写入 request.user，这里只做透出。
+   */
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户信息' })
+  getCurrentUser(@CurrentUser() user: UserPrincipal): UserPrincipal {
+    return user;
+  }
+
+  /**
+   * 获取当前用户权限编码列表
+   *
+   * 仅用于前端按钮级显隐，不作为后端授权依据（授权由 PermissionGuard 独立执行）。
+   */
+  @Get('permissions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户权限列表' })
+  getPermissions(@CurrentUser() user: UserPrincipal): { permissions: string[] } {
+    return { permissions: Array.from(user.permissionCodes) };
   }
 
   /**
