@@ -68,13 +68,19 @@ export class AuthGatewayController {
 
   /**
    * 登出接口
+   *
+   * 必须返回 200 + 响应体：204 No Content 按 HTTP 规范不带 body，
+   * Fastify 会直接丢弃控制器返回值，前端拿不到任何提示语。
+   *
+   * 返回的 `message` 位于 `data` 内（全局 ResponseInterceptor 会把顶层
+   * `message` 固定写成「操作成功」，与本接口无关）。
    */
   @Post('logout')
   @Audit({ title: '用户登出', operationType: OperationType.LOGOUT })
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: '用户登出' })
-  async logout(@Req() request: any) {
+  async logout(@Req() request: any): Promise<string> {
     const user = (request as unknown as { user?: { username?: string } }).user;
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
@@ -85,6 +91,8 @@ export class AuthGatewayController {
 
     // TODO: Implement token blacklist or session revocation
     // await this.authService.logout(userId, sessionId);
+
+    return '退出成功';
   }
 
   /**
@@ -109,10 +117,12 @@ export class AuthGatewayController {
    * 这里转换为 `UserProfileDto` 再返回：`UserPrincipal` 含 BigInt 与 Set，
    * 直接交给 Fastify 序列化会抛 `Do not know how to serialize a BigInt`。
    */
-  @Get('me')
+  @Get('info')
   @ApiBearerAuth()
   @ApiOperation({ summary: '获取当前用户信息' })
   getCurrentUser(@CurrentUser() user: UserPrincipal): UserProfileDto {
+    console.log(user, '1111111111');
+
     return plainToInstance(UserProfileDto, user, { excludeExtraneousValues: true });
   }
 
@@ -124,8 +134,8 @@ export class AuthGatewayController {
   @Get('permissions')
   @ApiBearerAuth()
   @ApiOperation({ summary: '获取当前用户权限列表' })
-  getPermissions(@CurrentUser() user: UserPrincipal): { permissions: string[] } {
-    return { permissions: Array.from(user.permissionCodes) };
+  getPermissions(@CurrentUser() user: UserPrincipal): string[] {
+    return Array.from(user.permissionCodes);
   }
 
   /**

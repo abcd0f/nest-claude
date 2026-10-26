@@ -44,6 +44,25 @@ export class UserService {
   }
 
   /**
+   * 查询用户已分配的角色与岗位 ID
+   *
+   * 用于前端「分配角色 / 分配岗位」弹窗回显。
+   */
+  async getUserRoles(userId: string): Promise<{ postIds: string[]; roleIds: string[] }> {
+    const id = parseId(userId, 'userId');
+
+    const [roles, posts] = await Promise.all([
+      this.prisma.userRole.findMany({ where: { userId: id }, select: { roleId: true } }),
+      this.prisma.userPost.findMany({ where: { userId: id }, select: { postId: true } }),
+    ]);
+
+    return {
+      postIds: posts.map((item) => item.postId.toString()),
+      roleIds: roles.map((item) => item.roleId.toString()),
+    };
+  }
+
+  /**
    * 创建用户
    * @param dto 创建用户 DTO
    * @returns 创建的用户

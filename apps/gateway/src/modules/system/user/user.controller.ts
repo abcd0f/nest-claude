@@ -40,6 +40,20 @@ export class UserController {
   }
 
   /**
+   * 获取用户已分配的角色与岗位
+   * GET /system/user/:userId/roles
+   *
+   * 供前端「分配角色」弹窗回显；`GET /system/user/:userId` 出于精简不回传关联 ID。
+   */
+  @Get(':userId/roles')
+  @Permission('system:user:view')
+  async getUserRoles(
+    @Param() params: UserIdParamDto,
+  ): Promise<{ postIds: string[]; roleIds: string[] }> {
+    return this.userService.getUserRoles(params.userId);
+  }
+
+  /**
    * 创建用户
    * POST /system/user
    */

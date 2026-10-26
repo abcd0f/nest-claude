@@ -126,16 +126,10 @@ export class AuthService {
     this.logger.log(`User logged in: ${user.userId} from IP: ${clientIp || 'unknown'}`);
 
     return {
-      token: {
-        accessToken,
-        expiresIn: this.tokenService.getAccessTokenExpiresInMs() / 1000,
-        refreshToken,
-        refreshTokenExpiresIn: this.tokenService.getRefreshTokenExpiresInMs() / 1000,
-        tokenType: 'Bearer',
-      },
-      userId,
-      username: user.userName,
-      realName: user.nickName,
+      accessToken,
+      expiresIn: this.tokenService.getAccessTokenExpiresInMs() / 1000,
+      refreshToken,
+      refreshTokenExpiresIn: this.tokenService.getRefreshTokenExpiresInMs() / 1000,
     };
   }
 
@@ -192,7 +186,6 @@ export class AuthService {
     return {
       accessToken: newAccessToken,
       expiresIn: this.tokenService.getAccessTokenExpiresInMs() / 1000,
-      tokenType: 'Bearer',
     };
   }
 
