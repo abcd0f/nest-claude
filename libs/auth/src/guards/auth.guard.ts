@@ -85,6 +85,8 @@ export class AuthGuard implements CanActivate {
       }
 
       // 6. 设置到请求上下文
+      // getCurrentUser 无法感知 JWT，这里回填会话 ID 供控制器透出
+      user.sessionId = payload.sid;
       request.user = user;
       request.token = payload;
 

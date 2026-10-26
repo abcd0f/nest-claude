@@ -7,6 +7,12 @@ import { LoginDto } from './dto/login.dto.js';
 import { TokenService } from './services/token.service.js';
 import { UserPrincipal } from './types/user-principal.type.js';
 
+/** 超级管理员角色编码，与 @app/permission 的 RESERVED_ROLES 保持一致 */
+const SUPER_ADMIN_ROLE_KEY = 'superadmin';
+
+/** 超级管理员通配权限码，前端据此放行全部按钮 */
+const SUPER_ADMIN_PERMISSION_CODE = '*:*:*';
+
 /**
  * 认证服务
  * 负责登录、Token 签发、Token 刷新、登出和会话管理
@@ -246,10 +252,42 @@ export class AuthService {
       return null;
     }
 
-    // TODO: 从数据库查询角色和权限
-    // 目前返回空值，待权限模块实现
-    const roleKeys: string[] = [];
-    const permissionCodes = new Set<string>();
+    // 加载有效角色（启用且未删除）
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId },
+      select: { role: { select: { roleKey: true, status: true, delFlag: true } } },
+    });
+
+    const roleKeys = userRoles
+      .filter(({ role }) => role.status === '0' && role.delFlag === '0')
+      .map(({ role }) => role.roleKey);
+
+    // 加载权限编码；超级管理员固定为通配符，避免逐条查询
+    let permissionCodes: Set<string>;
+    if (roleKeys.includes(SUPER_ADMIN_ROLE_KEY)) {
+      permissionCodes = new Set([SUPER_ADMIN_PERMISSION_CODE]);
+    } else if (roleKeys.length === 0) {
+      permissionCodes = new Set();
+    } else {
+      const rolePermissions = await this.prisma.rolePermission.findMany({
+        where: {
+          role: {
+            roleKey: { in: roleKeys },
+            status: '0',
+            delFlag: '0',
+          },
+        },
+        select: { permission: { select: { code: true, status: true } } },
+      });
+
+      permissionCodes = new Set(
+        rolePermissions
+          .filter(({ permission }) => permission.status === '0')
+          .map(({ permission }) => permission.code),
+      );
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
 
     return {
       userId: user.userId,
@@ -259,11 +297,11 @@ export class AuthService {
       roleKeys,
       permissionCodes,
       permissionVersion: user.permissionVersion,
-      sessionId: '', // TODO: 从 JWT 中获取
+      sessionId: '', // 由 AuthGuard 从 JWT 的 sid 声明回填
       status: user.status as '0' | '1',
       delFlag: user.delFlag as '0' | '1',
-      issuedAt: Math.floor(Date.now() / 1000),
-      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      issuedAt: nowSeconds,
+      expiresAt: nowSeconds + 3600,
     };
   }
 

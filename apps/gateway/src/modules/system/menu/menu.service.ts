@@ -515,11 +515,18 @@ export class MenuService {
    */
   private buildTree(menus: MenuResponseDto[], parentId: bigint): MenuTreeDto[] {
     const tree: MenuTreeDto[] = [];
+    // DTO 上的 @Transform 是 toPlainOnly，plainToInstance 之后 parentId/menuId
+    // 仍是 BigInt，必须统一转成字符串再比较，否则根节点永远匹配不上。
+    const parentIdText = parentId.toString();
 
     for (const menu of menus) {
-      if (menu.parentId === parentId.toString()) {
-        const node = { ...menu, children: [] } as MenuTreeDto;
-        const children = this.buildTree(menus, BigInt(menu.menuId));
+      if (String(menu.parentId) === parentIdText) {
+        // 必须保留 MenuTreeDto 实例原型：{...menu} 得到的普通对象会丢失
+        // class-transformer 元数据，instanceToPlain 不再执行 @Transform，
+        // 导致 menuId/parentId 的 BigInt 直接漏到 Fastify 序列化阶段报错。
+        const node = Object.assign(new MenuTreeDto(), menu, { children: [] as MenuTreeDto[] });
+        const menuId = typeof menu.menuId === 'bigint' ? menu.menuId : BigInt(String(menu.menuId));
+        const children = this.buildTree(menus, menuId);
 
         if (children.length > 0) {
           node.children = children;

@@ -1,6 +1,6 @@
 import type { UserPrincipal } from '@app/auth';
 import { Audit, LoginLogService, OperationType } from '@app/audit';
-import { AuthService, CurrentUser, LoginDto, Public } from '@app/auth';
+import { AuthService, CurrentUser, LoginDto, Public, UserProfileDto } from '@app/auth';
 import {
   Body,
   Controller,
@@ -12,6 +12,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
 
 /**
  * 认证控制器（网关层唯一 HTTP 入口）
@@ -104,13 +105,15 @@ export class AuthGatewayController {
   /**
    * 获取当前用户信息
    *
-   * 用户主体由全局 AuthGuard 校验并写入 request.user，这里只做透出。
+   * 用户主体由全局 AuthGuard 校验并写入 request.user。
+   * 这里转换为 `UserProfileDto` 再返回：`UserPrincipal` 含 BigInt 与 Set，
+   * 直接交给 Fastify 序列化会抛 `Do not know how to serialize a BigInt`。
    */
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: '获取当前用户信息' })
-  getCurrentUser(@CurrentUser() user: UserPrincipal): UserPrincipal {
-    return user;
+  getCurrentUser(@CurrentUser() user: UserPrincipal): UserProfileDto {
+    return plainToInstance(UserProfileDto, user, { excludeExtraneousValues: true });
   }
 
   /**
