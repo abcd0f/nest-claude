@@ -374,6 +374,9 @@ export class MenuService {
       throw new ConflictException(`权限编码 ${menu.perms} 已被其它菜单占用`);
     }
 
+    // 从编码解析资源与动作，便于按 resource 分组查询
+    const { resource, action } = parsePermissionCode(menu.perms);
+
     // 获取或创建权限
     const existing = await tx.permission.findUnique({
       where: { menuId: menu.menuId },
@@ -386,6 +389,8 @@ export class MenuService {
         data: {
           code: menu.perms,
           name: menu.menuName,
+          resource,
+          action,
           status: menu.status,
         },
       });
@@ -403,6 +408,8 @@ export class MenuService {
           data: {
             menuId: menu.menuId,
             name: menu.menuName,
+            resource,
+            action,
             status: menu.status,
           },
         });
@@ -413,6 +420,8 @@ export class MenuService {
           data: {
             code: menu.perms,
             name: menu.menuName,
+            resource,
+            action,
             status: menu.status,
             menuId: menu.menuId,
           },
@@ -522,4 +531,27 @@ export class MenuService {
 
     return tree;
   }
+}
+
+/**
+ * 从权限编码解析资源与动作
+ *
+ * 约定格式：`<module>:<resource>:<action>`，例如 `system:user:view` → resource=user, action=view
+ * 兼容两段式 `user:view` 与更多层级 `system:user:profile:view`（取倒数两段）。
+ * 解析失败时返回 null，不影响权限本身的创建。
+ */
+function parsePermissionCode(code: string): { resource: string | null; action: string | null } {
+  const segments = code
+    .split(':')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (segments.length < 2) {
+    return { resource: null, action: null };
+  }
+
+  return {
+    resource: segments[segments.length - 2] ?? null,
+    action: segments[segments.length - 1] ?? null,
+  };
 }

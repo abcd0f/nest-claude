@@ -29,10 +29,6 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:cache": "vitest run libs/cache libs/config/src/domains/redis.domain.spec.ts",
     "test:cache:e2e": "vitest run --config ./vitest.config.e2e.ts test/cache.e2e-spec.ts",
-    "permission:sync": "tsx scripts/permission-sync.ts sync",
-    "permission:check": "tsx scripts/permission-sync.ts check",
-    "permission:cleanup": "tsx scripts/permission-sync.ts cleanup",
-    "permission:fix": "tsx scripts/permission-sync.ts fix",
     "bootstrap:superadmin": "tsx scripts/bootstrap-superadmin.ts",
     "db:backup": "bash scripts/db-backup.sh",
     "db:restore": "bash scripts/db-restore.sh"
