@@ -1,17 +1,6 @@
 import { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { Permission } from '@app/permission';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { AssignPostsDto } from './dto/assign-posts.dto.js';
 import { AssignRolesDto } from './dto/assign-roles.dto.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -58,7 +47,6 @@ export class UserController {
    * POST /system/user
    */
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   @Permission('system:user:add')
   async createUser(@Body() dto: CreateUserDto): Promise<UserResponseDto> {
     return this.userService.createUser(dto);
@@ -80,12 +68,16 @@ export class UserController {
   /**
    * 删除用户
    * DELETE /system/user/:userId
+   *
+   * 返回 200 而不是 204：204 按 HTTP 规范不带响应体，前端
+   * `defaultResponseInterceptor` 取不到 `code` 字段，会把成功请求当失败抛错。
+   * 同仓先例：`POST /auth/logout` 也是因为这个原因从 204 改成 200。
+   *
    */
   @Delete(':userId')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:user:remove')
   async deleteUser(@Param() params: UserIdParamDto): Promise<void> {
-    return this.userService.deleteUser(params.userId);
+    await this.userService.deleteUser(params.userId);
   }
 
   /**
@@ -101,36 +93,40 @@ export class UserController {
   /**
    * 分配角色给用户
    * PUT /system/user/:userId/roles
+   *
+   * 全量替换语义。返回 200，原因同 `deleteUser`（204 无响应体，
+   * 前端拦截器会误判为失败）。
    */
   @Put(':userId/roles')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:user:assign')
   async assignRoles(@Param() params: UserIdParamDto, @Body() dto: AssignRolesDto): Promise<void> {
-    return this.userService.assignRoles(params.userId, dto.roleIds);
+    await this.userService.assignRoles(params.userId, dto.roleIds);
   }
 
   /**
    * 分配职位给用户
    * PUT /system/user/:userId/posts
+   *
+   * 全量替换语义。返回 200，原因同 `deleteUser`。
    */
   @Put(':userId/posts')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:user:assign')
   async assignPosts(@Param() params: UserIdParamDto, @Body() dto: AssignPostsDto): Promise<void> {
-    return this.userService.assignPosts(params.userId, dto.postIds);
+    await this.userService.assignPosts(params.userId, dto.postIds);
   }
 
   /**
    * 重置用户密码
    * PUT /system/user/:userId/password
+   *
+   * 返回 200，原因同 `deleteUser`。
    */
   @Put(':userId/password')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:user:resetPwd')
   async resetPassword(
     @Param() params: UserIdParamDto,
     @Body() dto: ResetPasswordDto,
   ): Promise<void> {
-    return this.userService.resetPassword(params.userId, dto.newPassword);
+    await this.userService.resetPassword(params.userId, dto.newPassword);
   }
 }

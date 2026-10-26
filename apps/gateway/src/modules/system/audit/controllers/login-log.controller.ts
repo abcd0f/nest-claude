@@ -1,6 +1,6 @@
 import { LoginLogQueryDto } from '@app/audit';
 import { Permission } from '@app/permission';
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { AuditQueryService } from '../services/audit-query.service.js';
 
 /**
@@ -24,7 +24,6 @@ export class LoginLogController {
    */
   @Delete(':infoId')
   @Permission('system:loginLog:remove')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('infoId') infoId: string) {
     await this.auditQueryService.deleteLoginLog(infoId);
   }
@@ -34,7 +33,6 @@ export class LoginLogController {
    */
   @Delete()
   @Permission('system:loginLog:remove')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async batchDelete(@Body('infoIds') infoIds: string[]) {
     await this.auditQueryService.batchDeleteLoginLogs(infoIds);
   }
@@ -44,7 +42,6 @@ export class LoginLogController {
    */
   @Delete('clear/all')
   @Permission('system:loginLog:remove')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async clear() {
     await this.auditQueryService.clearLoginLogs();
   }

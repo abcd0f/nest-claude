@@ -1,16 +1,5 @@
 import { Permission } from '@app/permission';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { DeptService } from './dept.service.js';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
 import { DeptIdParamDto } from './dto/dept-id-param.dto.js';
@@ -50,7 +39,6 @@ export class DeptController {
    * POST /system/dept
    */
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   @Permission('system:dept:add')
   async createDept(@Body() dto: CreateDeptDto): Promise<DeptResponseDto> {
     return this.deptService.createDept(dto);
@@ -74,7 +62,6 @@ export class DeptController {
    * DELETE /system/dept/:deptId
    */
   @Delete(':deptId')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:dept:remove')
   async deleteDept(@Param() params: DeptIdParamDto): Promise<void> {
     return this.deptService.deleteDept(params.deptId);

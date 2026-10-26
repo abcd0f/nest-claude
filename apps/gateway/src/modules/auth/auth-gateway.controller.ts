@@ -1,17 +1,8 @@
 import type { UserPrincipal } from '@app/auth';
-import { Audit, LoginLogService, OperationType } from '@app/audit';
+import { LoginLogService } from '@app/audit';
 import { AuthService, CurrentUser, LoginDto, Public, UserProfileDto } from '@app/auth';
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Req,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
 
 /**
@@ -44,8 +35,6 @@ export class AuthGatewayController {
    */
   @Post('login')
   @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '用户登录' })
   async login(@Body() loginDto: LoginDto, @Req() request: any) {
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
@@ -76,10 +65,7 @@ export class AuthGatewayController {
    * `message` 固定写成「操作成功」，与本接口无关）。
    */
   @Post('logout')
-  @Audit({ title: '用户登出', operationType: OperationType.LOGOUT })
-  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: '用户登出' })
   async logout(@Req() request: any): Promise<string> {
     const user = (request as unknown as { user?: { username?: string } }).user;
     const clientIp = this.extractIp(request);
@@ -100,8 +86,6 @@ export class AuthGatewayController {
    */
   @Post('refresh')
   @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '刷新访问令牌' })
   async refresh(@Body('refreshToken') refreshToken: string) {
     if (!refreshToken) {
       throw new UnauthorizedException('缺少刷新令牌');
@@ -119,7 +103,6 @@ export class AuthGatewayController {
    */
   @Get('info')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '获取当前用户信息' })
   getCurrentUser(@CurrentUser() user: UserPrincipal): UserProfileDto {
     console.log(user, '1111111111');
 
@@ -133,7 +116,6 @@ export class AuthGatewayController {
    */
   @Get('permissions')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '获取当前用户权限列表' })
   getPermissions(@CurrentUser() user: UserPrincipal): string[] {
     return Array.from(user.permissionCodes);
   }

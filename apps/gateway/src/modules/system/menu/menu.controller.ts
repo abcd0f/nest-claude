@@ -1,17 +1,6 @@
 import type { UserPrincipal } from '@app/auth';
 import { CurrentUser } from '@app/auth';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateMenuDto } from './dto/create-menu.dto.js';
 import { ListMenuDto } from './dto/list-menu.dto.js';
@@ -86,7 +75,6 @@ export class MenuController {
    * POST /system/menu
    */
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   async createMenu(@Body() dto: CreateMenuDto): Promise<MenuResponseDto> {
     return this.menuService.createMenu(dto);
   }
@@ -108,7 +96,6 @@ export class MenuController {
    * DELETE /system/menu/:menuId
    */
   @Delete(':menuId')
-  @HttpCode(HttpStatus.NO_CONTENT)
   async deleteMenu(@Param() params: MenuIdParamDto): Promise<void> {
     return this.menuService.deleteMenu(params.menuId);
   }

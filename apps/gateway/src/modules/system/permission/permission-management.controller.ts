@@ -5,8 +5,8 @@ import {
   PermissionReferenceCheckResult,
   PermissionService,
 } from '@app/permission';
-import { Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Delete, Get, Logger, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 /**
  * 权限管理控制器
@@ -39,8 +39,6 @@ export class PermissionManagementController {
    */
   @Get('check')
   @Permission('system:permission:check')
-  @ApiOperation({ summary: '权限数据体检' })
-  @ApiResponse({ status: 200, description: '权限诊断结果' })
   async check(): Promise<PermissionDiagnosticResult> {
     this.logger.log('Running permission check');
     return this.diagnosticService.checkPermissions();
@@ -57,8 +55,6 @@ export class PermissionManagementController {
    */
   @Get('references')
   @Permission('system:permission:check')
-  @ApiOperation({ summary: '代码引用一致性检查' })
-  @ApiResponse({ status: 200, description: '引用检查结果' })
   async checkReferences(): Promise<PermissionReferenceCheckResult> {
     this.logger.log('Running permission reference check');
     return this.diagnosticService.checkCodeReferences();
@@ -77,8 +73,6 @@ export class PermissionManagementController {
    */
   @Delete('orphans')
   @Permission('system:permission:cleanup')
-  @ApiOperation({ summary: '清理孤儿权限' })
-  @ApiResponse({ status: 200, description: '清理的权限数量' })
   async cleanupOrphans(): Promise<{ count: number; message: string }> {
     this.logger.warn('Cleaning up orphan permissions');
     const count = await this.diagnosticService.cleanupOrphanPermissions();
@@ -95,9 +89,6 @@ export class PermissionManagementController {
    */
   @Post('fix-bindings')
   @Permission('system:permission:fix')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '修复无效的菜单绑定' })
-  @ApiResponse({ status: 200, description: '修复的权限数量' })
   async fixBindings(): Promise<{ count: number; message: string }> {
     this.logger.log('Fixing invalid menu bindings');
     const count = await this.diagnosticService.fixInvalidMenuBindings();
@@ -117,9 +108,6 @@ export class PermissionManagementController {
    */
   @Post('cache/clear')
   @Permission('system:permission:cache')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '清除所有权限缓存' })
-  @ApiResponse({ status: 200, description: '缓存已清除' })
   async clearCache(): Promise<{ message: string }> {
     this.logger.warn('Clearing all permission cache');
     this.permissionService.clearAllCache();

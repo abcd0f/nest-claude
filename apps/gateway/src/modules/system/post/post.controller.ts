@@ -1,17 +1,6 @@
 import { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { Permission } from '@app/permission';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto.js';
 import { ListPostDto } from './dto/list-post.dto.js';
 import { PostIdParamDto } from './dto/post-id-param.dto.js';
@@ -41,7 +30,6 @@ export class PostController {
    * POST /system/post
    */
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   @Permission('system:post:add')
   async createPost(@Body() dto: CreatePostDto): Promise<PostResponseDto> {
     return this.postService.createPost(dto);
@@ -65,7 +53,6 @@ export class PostController {
    * DELETE /system/post/:postId
    */
   @Delete(':postId')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:post:remove')
   async deletePost(@Param() params: PostIdParamDto): Promise<void> {
     return this.postService.deletePost(params.postId);

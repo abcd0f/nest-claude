@@ -1,17 +1,6 @@
 import { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { Permission } from '@app/permission';
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { AssignDeptsDto } from './dto/assign-depts.dto.js';
 import { AssignMenusToRoleDto } from './dto/assign-menus-to-role.dto.js';
 import { CreateRoleDto } from './dto/create-role.dto.js';
@@ -43,7 +32,6 @@ export class RoleController {
    * POST /system/role
    */
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   @Permission('system:role:add')
   async createRole(@Body() dto: CreateRoleDto): Promise<RoleResponseDto> {
     return this.roleService.createRole(dto);
@@ -67,7 +55,6 @@ export class RoleController {
    * DELETE /system/role/:roleId
    */
   @Delete(':roleId')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:role:remove')
   async deleteRole(@Param() params: RoleIdParamDto): Promise<void> {
     return this.roleService.deleteRole(params.roleId);
@@ -88,7 +75,6 @@ export class RoleController {
    * PUT /system/role/:roleId/menus
    */
   @Put(':roleId/menus')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:role:assign')
   async assignMenusToRole(
     @Param() params: RoleIdParamDto,
@@ -102,7 +88,6 @@ export class RoleController {
    * PUT /system/role/:roleId/depts
    */
   @Put(':roleId/depts')
-  @HttpCode(HttpStatus.NO_CONTENT)
   @Permission('system:role:scope')
   async assignDeptsToRole(
     @Param() params: RoleIdParamDto,
