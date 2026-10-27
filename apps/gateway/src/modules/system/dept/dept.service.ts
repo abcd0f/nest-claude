@@ -4,7 +4,7 @@ import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
-import { DeptResponseDto, DeptTreeDto } from './dto/dept-response.dto.js';
+import { DeptResponseDto } from './dto/dept-response.dto.js';
 import { ListDeptDto } from './dto/list-dept.dto.js';
 import { UpdateDeptDto } from './dto/update-dept.dto.js';
 
@@ -22,22 +22,6 @@ export class DeptService {
   private readonly logger = new Logger(DeptService.name);
 
   constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * 获取部门树
-   * @returns 部门树结构
-   */
-  async getDeptTree(): Promise<DeptTreeDto[]> {
-    const depts = await this.prisma.dept.findMany({
-      orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
-    });
-
-    const deptDtos = depts.map((dept) =>
-      plainToInstance(DeptResponseDto, dept, { excludeExtraneousValues: true }),
-    );
-
-    return this.buildTree(deptDtos, 0n);
-  }
 
   /**
    * 获取部门详情
@@ -290,27 +274,5 @@ export class DeptService {
         queue.push({ deptId: child.deptId, ancestorPath: newAncestors });
       }
     }
-  }
-
-  /**
-   * 构建部门树
-   */
-  private buildTree(depts: DeptResponseDto[], parentId: bigint): DeptTreeDto[] {
-    const tree: DeptTreeDto[] = [];
-
-    for (const dept of depts) {
-      if (dept.parentId === parentId.toString()) {
-        const node = { ...dept, children: [] } as DeptTreeDto;
-        const children = this.buildTree(depts, BigInt(dept.deptId));
-
-        if (children.length > 0) {
-          node.children = children;
-        }
-
-        tree.push(node);
-      }
-    }
-
-    return tree;
   }
 }

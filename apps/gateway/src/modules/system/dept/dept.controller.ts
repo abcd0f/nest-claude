@@ -3,7 +3,7 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/
 import { DeptService } from './dept.service.js';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
 import { DeptIdParamDto } from './dto/dept-id-param.dto.js';
-import { DeptResponseDto, DeptTreeDto } from './dto/dept-response.dto.js';
+import { DeptResponseDto } from './dto/dept-response.dto.js';
 import { ListDeptDto } from './dto/list-dept.dto.js';
 import { UpdateDeptDto } from './dto/update-dept.dto.js';
 
@@ -13,16 +13,6 @@ import { UpdateDeptDto } from './dto/update-dept.dto.js';
 @Controller('system/dept')
 export class DeptController {
   constructor(private readonly deptService: DeptService) {}
-
-  /**
-   * 获取部门树
-   * GET /system/dept/tree
-   */
-  @Get('tree')
-  @Permission('system:dept:view')
-  async getDeptTree(): Promise<DeptTreeDto[]> {
-    return this.deptService.getDeptTree();
-  }
 
   /**
    * 获取部门详情

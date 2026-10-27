@@ -71,18 +71,3 @@ export class DeptResponseDto {
   @Expose()
   remark?: string | null;
 }
-
-/**
- * 部门树节点 DTO
- *
- * 在部门响应字段基础上附加子节点，用于返回部门树结构。
- */
-export class DeptTreeDto extends DeptResponseDto {
-  /**
-   * 子部门
-   *
-   * 叶子节点为空数组或不返回；不返回 `ancestors` 物化路径，前端无需感知。
-   */
-  @Expose()
-  children?: DeptTreeDto[];
-}
