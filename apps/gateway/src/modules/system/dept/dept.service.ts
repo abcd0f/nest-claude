@@ -1,4 +1,6 @@
+import { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { parseId } from '@app/common/utils/bigint.util.js';
+import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
 import { andWhere } from '@app/common/utils/where.util.js';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -209,19 +211,34 @@ export class DeptService {
   /**
    * 获取部门列表
    * @param dto 列表查询 DTO
-   * @returns 部门列表（平铺）
+   * @returns 分页响应
    */
-  async listDepts(dto: ListDeptDto): Promise<DeptResponseDto[]> {
-    const where = andWhere(dto.status ? { status: dto.status } : null, { delFlag: '0' });
-
-    const items = await this.prisma.dept.findMany({
-      where,
-      orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
+  async listDepts(dto: ListDeptDto): Promise<PageResponseDto<DeptResponseDto>> {
+    const { skip, take, page, pageSize } = paginate({
+      page: dto.page,
+      pageSize: dto.pageSize,
     });
 
-    return items.map((item) =>
+    const where = andWhere(dto.status ? { status: dto.status } : null, { delFlag: '0' });
+
+    const [items, total] = await Promise.all([
+      this.prisma.dept.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
+      }),
+      this.prisma.dept.count({ where }),
+    ]);
+
+    const deptDtos = items.map((item) =>
       plainToInstance(DeptResponseDto, item, { excludeExtraneousValues: true }),
     );
+
+    return {
+      items: deptDtos,
+      meta: makePageMeta(page, pageSize, total),
+    };
   }
 
   /**

@@ -1,3 +1,4 @@
+import { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { Permission } from '@app/permission';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { DeptService } from './dept.service.js';
@@ -15,12 +16,12 @@ export class DeptController {
   constructor(private readonly deptService: DeptService) {}
 
   /**
-   * 获取部门列表
-   * GET /system/dept?status=0
+   * 获取部门列表（分页）
+   * GET /system/dept/list?page=1&pageSize=20&status=0
    */
   @Get('list')
   @Permission('system:dept:view')
-  async listDepts(@Query() dto: ListDeptDto): Promise<DeptResponseDto[]> {
+  async listDepts(@Query() dto: ListDeptDto): Promise<PageResponseDto<DeptResponseDto>> {
     return this.deptService.listDepts(dto);
   }
 
