@@ -4,6 +4,7 @@ export * from './decorators/current-user.decorator.js';
 export * from './decorators/public.decorator.js';
 export * from './dto/login-result.dto.js';
 export * from './dto/login.dto.js';
+export * from './dto/logout.dto.js';
 export * from './dto/user-profile.dto.js';
 export * from './guards/auth.guard.js';
 export * from './services/token.service.js';

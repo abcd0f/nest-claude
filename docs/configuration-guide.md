@@ -52,10 +52,23 @@ auth:
   # JWT 受众
   audience: nest-admin
   # 是否启用刷新令牌轮换
+  # true：每次刷新都换发新的刷新令牌，旧令牌立即失效；旧令牌被重复使用会撤销整个会话
+  # 依赖 Redis（redis.enabled 必须为 true），否则启动直接报错
   refresh-token-rotation: true
-  # 密码重置令牌有效期（秒）
-  password-reset-token-ttl: 1800
 ```
+
+**刷新令牌轮换与会话状态的副作用**：
+
+- 会话状态存在 Redis，两个 key、TTL 都等于 `refresh-token-ttl`：
+  - `<key-prefix>:data:auth:session:<sessionId>` —— 会话存活标记，`AuthGuard` 每次请求校验
+  - `<key-prefix>:data:auth:refresh:<sessionId>` —— 当前有效 jti，仅在轮换开启时写入
+- **Redis 是认证路径的硬依赖**：`redis.enabled: false` 时无法登录（会话无法登记）。
+  轮换开启且 Redis 关闭时启动直接报错；轮换关闭时登录仍会写会话标记，Redis 不可用同样登录失败。
+- 前端必须串行刷新（同一时刻只发一个 `/auth/refresh`），否则后到的请求会拿着已作废的令牌被判定为重放，导致整个会话被撤销。
+- 从 `false` 切到 `true` 后，切换前签发的刷新令牌没有 Redis 记录，会全部失效，用户需要重新登录。
+- `POST /auth/logout` 只撤销当前会话：refresh token 与 access token 同时立即失效，其他设备的登录不受影响；重复调用幂等。
+- `POST /auth/logout` 是公开接口（不需要有效 access token）：token 过期后前端通常已清掉本地令牌，
+  此时必须在请求体里带 `{ "refreshToken": "..." }` 才能定位并撤销会话；两个令牌都拿不到时接口返回成功但不撤销任何会话。
 
 **⚠️ 安全提醒**:
 - 默认密钥仅用于开发环境

@@ -2,13 +2,16 @@ import { parseId } from '@app/common';
 import {
   CanActivate,
   ExecutionContext,
+  HttpException,
   Injectable,
   Logger,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service.js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
+import { SessionStore } from '../services/session.store.js';
 import { TokenService } from '../services/token.service.js';
 
 /**
@@ -18,14 +21,17 @@ import { TokenService } from '../services/token.service.js';
  * 1. 识别公开路由（@Public 装饰器）
  * 2. 提取 Bearer Token
  * 3. 验证 Token 的签名、有效期和发行者
- * 4. 从数据库加载用户主体
- * 5. 设置到请求上下文，供后续 middleware/controller 使用
+ * 4. 校验会话是否仍然存活（登出后立即失效）
+ * 5. 从数据库加载用户主体
+ * 6. 设置到请求上下文，供后续 middleware/controller 使用
  *
  * 流程：
  * - 如果路由标记为 @Public，直接放行
  * - 否则必须提供有效的 Bearer Token
  * - Token 过期、无效或用户不存在都返回 401
+ * - 会话已登出返回 401
  * - 用户已停用或已删除返回 401
+ * - 会话存储不可用返回 503（区分「已登出」和「查不了」）
  *
  * 执行顺序：
  * - 在 PermissionGuard 之前执行
@@ -42,6 +48,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly tokenService: TokenService,
     private readonly authService: AuthService,
+    private readonly sessionStore: SessionStore,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -69,6 +76,28 @@ export class AuthGuard implements CanActivate {
       // 3. 验证 Token
       const payload = await this.tokenService.verifyAccessToken(token);
 
+      // 3.1 校验会话存活：登出后即使 access token 未过期也立即失效
+      if (!payload.sid) {
+        this.logger.warn(`Token missing sid claim: sub=${payload.sub}`);
+        throw new UnauthorizedException('令牌缺少会话标识');
+      }
+
+      let sessionActive: boolean;
+      try {
+        sessionActive = await this.sessionStore.isActive(payload.sid);
+      } catch (error) {
+        // Redis 故障不能当成「已登出」，否则会把所有在线用户踢下线
+        this.logger.error(
+          `会话状态查询失败: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw new ServiceUnavailableException('会话状态暂不可用，请稍后重试');
+      }
+
+      if (!sessionActive) {
+        this.logger.warn(`Session revoked or expired: ${payload.sid}`);
+        throw new UnauthorizedException('会话已失效，请重新登录');
+      }
+
       // 4. 加载用户主体
       const userId = parseId(payload.sub, 'userId');
       const user = await this.authService.getCurrentUser(userId);
@@ -92,7 +121,8 @@ export class AuthGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      // 业务异常原样抛出：401 已登出、503 会话存储不可用
+      if (error instanceof HttpException) {
         throw error;
       }
 

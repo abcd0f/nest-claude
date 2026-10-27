@@ -1,4 +1,5 @@
 import type { AuthConfig } from '@app/config';
+import { CacheModule } from '@app/cache';
 import { authConfig } from '@app/config';
 import { CryptoModule } from '@app/crypto';
 import { DatabaseModule } from '@app/database';
@@ -6,6 +7,8 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service.js';
 import { AuthGuard } from './guards/auth.guard.js';
+import { RefreshTokenStore } from './services/refresh-token.store.js';
+import { SessionStore } from './services/session.store.js';
 import { TokenService } from './services/token.service.js';
 
 /**
@@ -64,6 +67,7 @@ import { TokenService } from './services/token.service.js';
   imports: [
     DatabaseModule,
     CryptoModule,
+    CacheModule,
     JwtModule.registerAsync({
       inject: [authConfig.KEY],
       useFactory: (config: AuthConfig) => ({
@@ -76,7 +80,9 @@ import { TokenService } from './services/token.service.js';
       }),
     }),
   ],
-  providers: [TokenService, AuthService, AuthGuard],
-  exports: [AuthService, TokenService, AuthGuard],
+  providers: [TokenService, RefreshTokenStore, SessionStore, AuthService, AuthGuard],
+  // SessionStore 需导出：AuthGuard 在 CoreModule 中通过 APP_GUARD useClass 重新实例化，
+  // 依赖要在 CoreModule 的注入上下文里可解析。
+  exports: [AuthService, TokenService, AuthGuard, SessionStore],
 })
 export class AuthModule {}

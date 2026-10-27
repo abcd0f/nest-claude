@@ -47,14 +47,9 @@ export interface AuthConfig {
   /**
    * 是否启用刷新令牌轮换
    * 启用后每次刷新都会废弃旧令牌，提高安全性
+   * 依赖 Redis（redis.enabled 必须为 true），否则启动即报错
    */
   refreshTokenRotation: boolean;
-
-  /**
-   * 密码重置令牌有效期（秒）
-   * 建议：15分钟 - 1小时
-   */
-  passwordResetTokenTtl: number;
 }
 
 /**
@@ -75,7 +70,7 @@ export const authDomain = defineConfigDomain<AuthConfig>({
         'auth.refresh-token-secret',
         'CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET',
       ),
-      accessTokenTtl: asStrictInteger(value['access-token-ttl'], 'auth.access-token-ttl', 1800, 60),
+      accessTokenTtl: asStrictInteger(value['access-token-ttl'], 'auth.access-token-ttl', 1800, 10),
       refreshTokenTtl: asStrictInteger(
         value['refresh-token-ttl'],
         'auth.refresh-token-ttl',
@@ -88,12 +83,6 @@ export const authDomain = defineConfigDomain<AuthConfig>({
         value['refresh-token-rotation'],
         'auth.refresh-token-rotation',
         true,
-      ),
-      passwordResetTokenTtl: asStrictInteger(
-        value['password-reset-token-ttl'],
-        'auth.password-reset-token-ttl',
-        1800,
-        60,
       ),
     };
   },

@@ -31,7 +31,6 @@ auth:
   issuer: nest-admin
   audience: nest-admin
   refresh-token-rotation: true
-  password-reset-token-ttl: 1800
 ```
 
 **生产环境必须配置**: `config/production.local.yaml`

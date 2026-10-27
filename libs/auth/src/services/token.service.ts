@@ -176,6 +176,50 @@ export class TokenService {
   }
 
   /**
+   * 解码访问令牌，忽略过期时间
+   *
+   * 只用于「令牌已过期，但仍需识别是哪个会话」的场景（登出）。
+   * 签名、issuer、audience 仍然严格校验，伪造或篡改的令牌一律返回 null。
+   *
+   * @param token 访问令牌
+   * @returns 解析后的 payload；令牌无效或签名不匹配返回 null
+   */
+  async decodeExpiredAccessToken(token: string): Promise<AccessTokenPayload | null> {
+    return this.verifyIgnoringExpiration(token, this.config.accessTokenSecret);
+  }
+
+  /**
+   * 解码刷新令牌，忽略过期时间
+   *
+   * 语义同 {@link decodeExpiredAccessToken}，使用刷新令牌密钥验签。
+   *
+   * @param token 刷新令牌
+   * @returns 解析后的 payload；令牌无效或签名不匹配返回 null
+   */
+  async decodeExpiredRefreshToken(token: string): Promise<AccessTokenPayload | null> {
+    return this.verifyIgnoringExpiration(token, this.config.refreshTokenSecret);
+  }
+
+  /** 验签但跳过 exp 校验；任何校验失败都归为 null，不向调用方抛错 */
+  private async verifyIgnoringExpiration(
+    token: string,
+    secret: string,
+  ): Promise<AccessTokenPayload | null> {
+    if (!token) return null;
+
+    try {
+      return await this.jwtService.verifyAsync<AccessTokenPayload>(token, {
+        secret,
+        issuer: this.config.issuer,
+        audience: this.config.audience,
+        ignoreExpiration: true,
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 计算访问 Token 的过期时间（毫秒）
    */
   getAccessTokenExpiresInMs(): number {

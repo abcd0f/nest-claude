@@ -1,16 +1,24 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import type { Mock, Mocked } from 'vitest';
+import {
+  ExecutionContext,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
 import { AuthService } from '../auth.service.js';
+import { SessionStore } from '../services/session.store.js';
 import { TokenService } from '../services/token.service.js';
 import { UserPrincipal } from '../types/user-principal.type.js';
 import { AuthGuard } from './auth.guard.js';
 
 describe('authGuard', () => {
   let guard: AuthGuard;
-  let reflector: jest.Mocked<Reflector>;
-  let tokenService: jest.Mocked<TokenService>;
-  let authService: jest.Mocked<AuthService>;
+  let reflector: Mocked<Reflector>;
+  let tokenService: Mocked<TokenService>;
+  let authService: Mocked<AuthService>;
+  let sessionStore: { isActive: ReturnType<typeof vi.fn> };
 
   const mockUser: UserPrincipal = {
     userId: 1n,
@@ -41,28 +49,38 @@ describe('authGuard', () => {
         {
           provide: Reflector,
           useValue: {
-            getAllAndOverride: jest.fn(),
+            getAllAndOverride: vi.fn(),
           },
         },
         {
           provide: TokenService,
           useValue: {
-            verifyAccessToken: jest.fn(),
+            verifyAccessToken: vi.fn(),
           },
         },
         {
           provide: AuthService,
           useValue: {
-            getCurrentUser: jest.fn(),
+            getCurrentUser: vi.fn(),
+          },
+        },
+        {
+          provide: SessionStore,
+          useValue: {
+            isActive: vi.fn(),
           },
         },
       ],
     }).compile();
 
     guard = module.get<AuthGuard>(AuthGuard);
-    reflector = module.get(Reflector) as jest.Mocked<Reflector>;
-    tokenService = module.get(TokenService) as jest.Mocked<TokenService>;
-    authService = module.get(AuthService) as jest.Mocked<AuthService>;
+    reflector = module.get(Reflector) as Mocked<Reflector>;
+    tokenService = module.get(TokenService) as Mocked<TokenService>;
+    authService = module.get(AuthService) as Mocked<AuthService>;
+    sessionStore = module.get(SessionStore) as unknown as typeof sessionStore;
+
+    // 默认会话存活，个别用例再覆盖
+    sessionStore.isActive.mockResolvedValue(true);
   });
 
   it('should be defined', () => {
@@ -72,16 +90,16 @@ describe('authGuard', () => {
   describe('canActivate', () => {
     const createMockExecutionContext = (overrides = {}): ExecutionContext =>
       ({
-        switchToHttp: jest.fn().mockReturnValue({
-          getRequest: jest.fn().mockReturnValue({
+        switchToHttp: vi.fn().mockReturnValue({
+          getRequest: vi.fn().mockReturnValue({
             headers: {
               authorization: 'Bearer valid-token',
             },
             ...overrides,
           }),
         }),
-        getHandler: jest.fn(),
-        getClass: jest.fn(),
+        getHandler: vi.fn(),
+        getClass: vi.fn(),
       }) as any;
 
     it('should allow public routes', async () => {
@@ -117,7 +135,7 @@ describe('authGuard', () => {
     it('should authenticate valid token', async () => {
       const request = { headers: { authorization: 'Bearer valid-token' } };
       const context = createMockExecutionContext();
-      (context.switchToHttp().getRequest as jest.Mock).mockReturnValue(request);
+      (context.switchToHttp().getRequest as Mock).mockReturnValue(request);
 
       reflector.getAllAndOverride.mockReturnValue(false);
       tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
@@ -126,6 +144,7 @@ describe('authGuard', () => {
       const result = await guard.canActivate(context);
 
       expect(result).toBe(true);
+      expect(sessionStore.isActive).toHaveBeenCalledWith('session-456');
       expect(request.user).toEqual(mockUser);
       expect(request.token).toEqual(mockPayload);
     });
@@ -136,6 +155,35 @@ describe('authGuard', () => {
       tokenService.verifyAccessToken.mockRejectedValue(new Error('Invalid token'));
 
       await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should reject token whose session was revoked', async () => {
+      const context = createMockExecutionContext();
+      reflector.getAllAndOverride.mockReturnValue(false);
+      tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
+      sessionStore.isActive.mockResolvedValue(false);
+
+      await expect(guard.canActivate(context)).rejects.toThrow('会话已失效，请重新登录');
+      // 会话已失效就不该再查库
+      expect(authService.getCurrentUser).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedException for token without sid', async () => {
+      const context = createMockExecutionContext();
+      reflector.getAllAndOverride.mockReturnValue(false);
+      tokenService.verifyAccessToken.mockResolvedValue({ sub: '1' } as any);
+
+      await expect(guard.canActivate(context)).rejects.toThrow('令牌缺少会话标识');
+      expect(sessionStore.isActive).not.toHaveBeenCalled();
+    });
+
+    it('should surface 503 instead of 401 when session storage fails', async () => {
+      const context = createMockExecutionContext();
+      reflector.getAllAndOverride.mockReturnValue(false);
+      tokenService.verifyAccessToken.mockResolvedValue(mockPayload as any);
+      sessionStore.isActive.mockRejectedValue(new Error('Redis 未就绪或已关闭'));
+
+      await expect(guard.canActivate(context)).rejects.toThrow(ServiceUnavailableException);
     });
 
     it('should throw UnauthorizedException for non-existent user', async () => {

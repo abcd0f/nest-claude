@@ -1,9 +1,14 @@
+import type { AuthConfig } from '@app/config';
+import type { Mocked } from 'vitest';
+import { authConfig } from '@app/config';
 import { PasswordHashService } from '@app/crypto';
 import { PrismaService } from '@app/database';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { type Mocked, vi } from 'vitest';
+import { vi } from 'vitest';
 import { AuthService } from './auth.service.js';
+import { RefreshTokenStore } from './services/refresh-token.store.js';
+import { SessionStore } from './services/session.store.js';
 import { TokenService } from './services/token.service.js';
 
 describe('authService', () => {
@@ -11,6 +16,26 @@ describe('authService', () => {
   let tokenService: Mocked<TokenService>;
   let prismaService: Mocked<PrismaService>;
   let passwordHashService: Mocked<PasswordHashService>;
+  let refreshTokenStore: {
+    issue: ReturnType<typeof vi.fn>;
+    rotate: ReturnType<typeof vi.fn>;
+    revoke: ReturnType<typeof vi.fn>;
+  };
+  let sessionStore: {
+    start: ReturnType<typeof vi.fn>;
+    touch: ReturnType<typeof vi.fn>;
+    end: ReturnType<typeof vi.fn>;
+  };
+
+  const config: AuthConfig = {
+    accessTokenSecret: 'access-secret',
+    refreshTokenSecret: 'refresh-secret',
+    accessTokenTtl: 3600,
+    refreshTokenTtl: 604800,
+    issuer: 'nest-admin',
+    audience: 'nest-admin',
+    refreshTokenRotation: true,
+  };
 
   const mockUser = {
     userId: 1n,
@@ -42,6 +67,8 @@ describe('authService', () => {
             signRefreshToken: vi.fn(),
             verifyAccessToken: vi.fn(),
             verifyRefreshToken: vi.fn(),
+            decodeExpiredAccessToken: vi.fn(),
+            decodeExpiredRefreshToken: vi.fn(),
             extractUserId: vi.fn(),
             getAccessTokenExpiresInMs: vi.fn().mockReturnValue(3600000),
             getRefreshTokenExpiresInMs: vi.fn().mockReturnValue(604800000),
@@ -63,6 +90,26 @@ describe('authService', () => {
             verifyPassword: vi.fn(),
           },
         },
+        {
+          provide: RefreshTokenStore,
+          useValue: {
+            issue: vi.fn(),
+            rotate: vi.fn(),
+            revoke: vi.fn(),
+          },
+        },
+        {
+          provide: SessionStore,
+          useValue: {
+            start: vi.fn(),
+            touch: vi.fn(),
+            end: vi.fn(),
+          },
+        },
+        {
+          provide: authConfig.KEY,
+          useValue: config,
+        },
       ],
     }).compile();
 
@@ -70,6 +117,8 @@ describe('authService', () => {
     tokenService = module.get(TokenService) as Mocked<TokenService>;
     prismaService = module.get(PrismaService) as Mocked<PrismaService>;
     passwordHashService = module.get(PasswordHashService) as Mocked<PasswordHashService>;
+    refreshTokenStore = module.get(RefreshTokenStore) as unknown as typeof refreshTokenStore;
+    sessionStore = module.get(SessionStore) as unknown as typeof sessionStore;
   });
 
   it('should be defined', () => {
@@ -89,17 +138,16 @@ describe('authService', () => {
       const result = await service.login(loginDto, '127.0.0.1');
 
       expect(result).toEqual({
-        token: {
-          accessToken: 'access-token',
-          expiresIn: 3600,
-          refreshToken: 'refresh-token',
-          refreshTokenExpiresIn: 604800,
-          tokenType: 'Bearer',
-        },
-        userId: '1',
-        username: 'admin',
-        nickName: 'Admin User',
+        accessToken: 'access-token',
+        expiresIn: 3600,
+        refreshToken: 'refresh-token',
+        refreshTokenExpiresIn: 604800,
       });
+
+      // 轮换开启时必须把本次 jti 登记到会话存储
+      expect(refreshTokenStore.issue).toHaveBeenCalledWith(expect.any(String), expect.any(String));
+      // 会话必须登记，否则 AuthGuard 会拒绝后续请求
+      expect(sessionStore.start).toHaveBeenCalledWith(expect.any(String), '1');
 
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({
         where: { userName: 'admin' },
@@ -171,6 +219,7 @@ describe('authService', () => {
       const payload = {
         sub: '1',
         sid: 'session-id',
+        jti: 'jti-1',
         iat: Date.now() / 1000,
         exp: (Date.now() + 604800000) / 1000,
       };
@@ -178,16 +227,64 @@ describe('authService', () => {
       tokenService.verifyRefreshToken.mockResolvedValue(payload as any);
       prismaService.user.findUnique.mockResolvedValue(mockFullUser);
       tokenService.signAccessToken.mockResolvedValue('new-access-token');
+      tokenService.signRefreshToken.mockResolvedValue('new-refresh-token');
+      refreshTokenStore.rotate.mockResolvedValue('rotated');
 
       const result = await service.refreshToken('refresh-token');
 
       expect(result).toEqual({
         accessToken: 'new-access-token',
         expiresIn: 3600,
-        tokenType: 'Bearer',
+        refreshToken: 'new-refresh-token',
+        refreshTokenExpiresIn: 604800,
       });
 
       expect(tokenService.verifyRefreshToken).toHaveBeenCalledWith('refresh-token');
+      expect(refreshTokenStore.rotate).toHaveBeenCalledWith(
+        'session-id',
+        'jti-1',
+        expect.any(String),
+      );
+      // 会话寿命跟随刷新令牌，刷新成功后必须续期
+      expect(sessionStore.touch).toHaveBeenCalledWith('session-id');
+    });
+
+    it('should reject replayed refresh token', async () => {
+      const payload = { sub: '1', sid: 'session-id', jti: 'jti-1' };
+
+      tokenService.verifyRefreshToken.mockResolvedValue(payload as any);
+      prismaService.user.findUnique.mockResolvedValue(mockFullUser);
+      tokenService.signAccessToken.mockResolvedValue('new-access-token');
+      tokenService.signRefreshToken.mockResolvedValue('new-refresh-token');
+      refreshTokenStore.rotate.mockResolvedValue('replayed');
+
+      await expect(service.refreshToken('refresh-token')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should only issue access token when rotation is disabled', async () => {
+      const payload = { sub: '1', sid: 'session-id', jti: 'jti-1' };
+
+      tokenService.verifyRefreshToken.mockResolvedValue(payload as any);
+      prismaService.user.findUnique.mockResolvedValue(mockFullUser);
+      tokenService.signAccessToken.mockResolvedValue('new-access-token');
+
+      // 关掉轮换后重建实例
+      const module = await Test.createTestingModule({
+        providers: [
+          AuthService,
+          { provide: TokenService, useValue: tokenService },
+          { provide: PrismaService, useValue: prismaService },
+          { provide: PasswordHashService, useValue: passwordHashService },
+          { provide: RefreshTokenStore, useValue: refreshTokenStore },
+          { provide: SessionStore, useValue: sessionStore },
+          { provide: authConfig.KEY, useValue: { ...config, refreshTokenRotation: false } },
+        ],
+      }).compile();
+
+      const result = await module.get(AuthService).refreshToken('refresh-token');
+
+      expect(result).toEqual({ accessToken: 'new-access-token', expiresIn: 3600 });
+      expect(refreshTokenStore.rotate).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for invalid refresh token', async () => {
@@ -212,8 +309,66 @@ describe('authService', () => {
   });
 
   describe('logout', () => {
-    it('should logout successfully', async () => {
-      await expect(service.logout(1n, 'session-id')).resolves.not.toThrow();
+    it('should revoke session identified by expired access token', async () => {
+      tokenService.decodeExpiredAccessToken.mockResolvedValue({
+        sub: '1',
+        sid: 'session-id',
+      } as any);
+      prismaService.user.findUnique.mockResolvedValue({ userName: 'admin' });
+      sessionStore.end.mockResolvedValue(true);
+
+      const result = await service.logout({ accessToken: 'expired-access-token' });
+
+      expect(refreshTokenStore.revoke).toHaveBeenCalledWith('session-id');
+      expect(sessionStore.end).toHaveBeenCalledWith('session-id');
+      expect(result).toEqual({ username: 'admin' });
+    });
+
+    it('should fall back to refresh token when access token is unusable', async () => {
+      tokenService.decodeExpiredAccessToken.mockResolvedValue(null);
+      tokenService.decodeExpiredRefreshToken.mockResolvedValue({
+        sub: '1',
+        sid: 'session-from-refresh',
+      } as any);
+      prismaService.user.findUnique.mockResolvedValue({ userName: 'admin' });
+      sessionStore.end.mockResolvedValue(true);
+
+      await service.logout({ accessToken: 'bad-token', refreshToken: 'good-refresh-token' });
+
+      expect(sessionStore.end).toHaveBeenCalledWith('session-from-refresh');
+    });
+
+    it('should be a no-op when no token can be identified', async () => {
+      tokenService.decodeExpiredAccessToken.mockResolvedValue(null);
+      tokenService.decodeExpiredRefreshToken.mockResolvedValue(null);
+
+      await expect(service.logout({})).resolves.toBeNull();
+      expect(refreshTokenStore.revoke).not.toHaveBeenCalled();
+      expect(sessionStore.end).not.toHaveBeenCalled();
+    });
+
+    it('should stay idempotent when session is already gone', async () => {
+      tokenService.decodeExpiredAccessToken.mockResolvedValue({
+        sub: '1',
+        sid: 'session-id',
+      } as any);
+      prismaService.user.findUnique.mockResolvedValue({ userName: 'admin' });
+      sessionStore.end.mockResolvedValue(false);
+
+      await expect(service.logout({ accessToken: 'token' })).resolves.toEqual({
+        username: 'admin',
+      });
+    });
+
+    it('should propagate storage failure instead of reporting success', async () => {
+      tokenService.decodeExpiredAccessToken.mockResolvedValue({
+        sub: '1',
+        sid: 'session-id',
+      } as any);
+      refreshTokenStore.revoke.mockRejectedValue(new Error('Redis 命令执行失败'));
+
+      await expect(service.logout({ accessToken: 'token' })).rejects.toThrow('Redis 命令执行失败');
+      expect(sessionStore.end).not.toHaveBeenCalled();
     });
   });
 

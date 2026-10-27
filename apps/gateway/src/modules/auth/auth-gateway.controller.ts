@@ -1,6 +1,6 @@
 import type { UserPrincipal } from '@app/auth';
 import { LoginLogService } from '@app/audit';
-import { AuthService, CurrentUser, LoginDto, Public, UserProfileDto } from '@app/auth';
+import { AuthService, CurrentUser, LoginDto, LogoutDto, Public, UserProfileDto } from '@app/auth';
 import { toDto } from '@app/common';
 import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -63,20 +63,30 @@ export class AuthGatewayController {
    *
    * 返回的 `message` 位于 `data` 内（全局 ResponseInterceptor 会把顶层
    * `message` 固定写成「操作成功」，与本接口无关）。
+   *
+   * 标 `@Public` 是有意的：access token 过期后前端通常已清掉本地令牌、
+   * 不再发送 Authorization 头，若仍要求认证，用户会卡在「登不出去」的 401 上。
+   * 会话靠请求体里的 refreshToken 兜底定位，两者都拿不到时按已登出处理。
+   *
+   * 撤销范围仅限当前会话（JWT 的 `sid`）：刷新令牌与 access token 同时失效，
+   * 其他设备已登录的会话不受影响。重复调用幂等。
    */
   @Post('logout')
+  @Public()
   @ApiBearerAuth()
-  async logout(@Req() request: any): Promise<string> {
-    const user = (request as unknown as { user?: { username?: string } }).user;
+  async logout(@Body() dto: LogoutDto, @Req() request: any): Promise<string> {
     const clientIp = this.extractIp(request);
     const userAgent = request.headers['user-agent'] || 'unknown';
 
-    if (user?.username) {
-      await this.loginLogService.logLogout(user.username, clientIp, userAgent);
-    }
+    const result = await this.authService.logout({
+      accessToken: this.extractBearerToken(request),
+      refreshToken: dto?.refreshToken,
+    });
 
-    // TODO: Implement token blacklist or session revocation
-    // await this.authService.logout(userId, sessionId);
+    // 识别不出会话也返回成功：登出必须幂等，不能因为「本来就没登录」而报错
+    if (result?.username) {
+      await this.loginLogService.logLogout(result.username, clientIp, userAgent);
+    }
 
     return '退出成功';
   }
@@ -131,5 +141,21 @@ export class AuthGatewayController {
     }
 
     return request.ip || 'unknown';
+  }
+
+  /**
+   * 提取 Authorization 头里的 Bearer Token
+   *
+   * 登出接口是 @Public，AuthGuard 不会代劳，只能自己解析。
+   * 令牌允许已过期（由 AuthService 验签时跳过 exp），但不能缺失或格式错误。
+   */
+  private extractBearerToken(request: any): string | undefined {
+    const authHeader = request.headers?.authorization;
+    if (!authHeader || typeof authHeader !== 'string') {
+      return undefined;
+    }
+
+    const [type, token] = authHeader.split(' ');
+    return type === 'Bearer' && token ? token : undefined;
   }
 }

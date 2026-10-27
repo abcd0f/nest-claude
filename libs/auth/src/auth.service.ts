@@ -1,11 +1,33 @@
+import type { AuthConfig } from '@app/config';
+import type { AccessTokenPayload } from './services/token.service.js';
 import { randomUUID } from 'node:crypto';
+import { authConfig } from '@app/config';
 import { PasswordHashService } from '@app/crypto';
 import { PrismaService } from '@app/database';
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginResultDto, TokenDto } from './dto/login-result.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RefreshTokenStore } from './services/refresh-token.store.js';
+import { SessionStore } from './services/session.store.js';
 import { TokenService } from './services/token.service.js';
 import { UserPrincipal } from './types/user-principal.type.js';
+
+/**
+ * 登出时可提供的令牌
+ *
+ * access token 优先（能定位到具体会话），缺失或无效时退回 refresh token。
+ * 两者都允许已过期 —— 登出接口必须在 access token 过期后依然可用。
+ */
+export interface LogoutCredentials {
+  accessToken?: string;
+  refreshToken?: string;
+}
 
 /** 超级管理员角色编码，与 @app/permission 的 RESERVED_ROLES 保持一致 */
 const SUPER_ADMIN_ROLE_KEY = 'superadmin';
@@ -32,6 +54,9 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwordHashService: PasswordHashService,
     private readonly tokenService: TokenService,
+    private readonly refreshTokenStore: RefreshTokenStore,
+    private readonly sessionStore: SessionStore,
+    @Inject(authConfig.KEY) private readonly config: AuthConfig,
   ) {}
 
   /**
@@ -113,6 +138,12 @@ export class AuthService {
     const accessToken = await this.tokenService.signAccessToken(userId, sessionId, jti);
     const refreshToken = await this.tokenService.signRefreshToken(userId, sessionId, jti);
 
+    // 轮换模式下登记该 jti，后续刷新只认这一个；关闭时为空操作
+    await this.refreshTokenStore.issue(sessionId, jti);
+
+    // 登记会话，AuthGuard 据此判断 access token 是否仍然有效
+    await this.sessionStore.start(sessionId, userId);
+
     // 5. 更新用户登录信息
     await this.prisma.user.update({
       where: { userId: user.userId },
@@ -139,12 +170,13 @@ export class AuthService {
    * 流程：
    * 1. 验证 Refresh Token 的有效性
    * 2. 查询用户确保其仍然有效
-   * 3. 签发新的 Access Token（可选：新的 Refresh Token）
-   * 4. 可选：旧 Token 黑名单或记录（防重放）
+   * 3. 签发新的 Access Token
+   * 4. `auth.refresh-token-rotation` 为 true 时：比对并原子替换会话记录的 jti，
+   *    同时返回新的 Refresh Token；旧令牌被重复使用会撤销整个会话
    *
    * @param refreshToken 刷新令牌
-   * @returns 新的 Token 信息
-   * @throws UnauthorizedException 如果 Token 无效或过期
+   * @returns 新的 Token 信息；轮换开启时包含新的 `refreshToken`
+   * @throws UnauthorizedException 如果 Token 无效、过期或已被轮换
    * @throws BadRequestException 如果用户被停用或删除
    *
    * @example
@@ -182,31 +214,104 @@ export class AuthService {
 
     // 4. 签发新的 Access Token（保持原会话 ID）
     const newAccessToken = await this.tokenService.signAccessToken(payload.sub, payload.sid);
+    const expiresIn = this.tokenService.getAccessTokenExpiresInMs() / 1000;
+
+    // 5. 轮换关闭：沿用旧行为，只换 Access Token，刷新令牌可重复使用
+    if (!this.config.refreshTokenRotation) {
+      return { accessToken: newAccessToken, expiresIn };
+    }
+
+    // 6. 轮换开启：旧 jti 必须与会话记录一致，换发新的刷新令牌
+    if (!payload.jti) {
+      throw new UnauthorizedException('刷新令牌缺少 jti 声明');
+    }
+
+    const nextJti = randomUUID();
+    const nextRefreshToken = await this.tokenService.signRefreshToken(
+      payload.sub,
+      payload.sid,
+      nextJti,
+    );
+    const outcome = await this.refreshTokenStore.rotate(payload.sid, payload.jti, nextJti);
+
+    if (outcome !== 'rotated') {
+      // replayed：旧令牌被重复使用，会话已撤销；missing：已过期或已登出
+      this.logger.warn(`刷新令牌不可用（${outcome}），sessionId=${payload.sid}`);
+      throw new UnauthorizedException('刷新令牌已失效，请重新登录');
+    }
+
+    // 会话续期：会话寿命跟随刷新令牌，避免活跃会话被固定 TTL 掐断
+    await this.sessionStore.touch(payload.sid);
 
     return {
       accessToken: newAccessToken,
-      expiresIn: this.tokenService.getAccessTokenExpiresInMs() / 1000,
+      expiresIn,
+      refreshToken: nextRefreshToken,
+      refreshTokenExpiresIn: this.tokenService.getRefreshTokenExpiresInMs() / 1000,
     };
   }
 
   /**
    * 登出处理
    *
-   * 目前简化实现：仅记录日志
-   * 完整实现应包括：
-   * - Token 黑名单或会话撤销
-   * - 跨设备登出
-   * - 审计日志
+   * 只影响当前会话，其他设备的登录状态不受影响：
+   * 1. 撤销刷新令牌记录 —— 手上的 refresh token 立即失效，无法再换 access token
+   * 2. 结束会话 —— AuthGuard 下一次请求就判定会话不存在，access token 立即失效
    *
-   * @param userId 用户 ID（字符串或 BigInt）
-   * @param sessionId 会话 ID
+   * 令牌允许已过期：登出接口在 access token 过期后仍必须可用，因此用
+   * `decodeExpired*` 验签但跳过 exp 校验，靠 `sid` 定位会话。
+   * 两个令牌都拿不到时视为「已经登出」，不做任何事也不报错。
    *
-   * @example
-   * await authService.logout('123', 'session-456');
+   * @param credentials 客户端能提供的令牌（access 优先，其次 refresh）
+   * @returns 用于审计的用户名；无法识别会话时返回 null
    */
-  async logout(userId: bigint | string, sessionId: string): Promise<void> {
-    this.logger.log(`User logged out: ${userId}, sessionId: ${sessionId}`);
-    // TODO: 实现会话撤销或 Token 黑名单
+  async logout(credentials: LogoutCredentials): Promise<{ username: string } | null> {
+    const payload = await this.resolveSessionForLogout(credentials);
+
+    if (!payload) {
+      this.logger.warn('登出请求未携带可识别的令牌，按已登出处理');
+      return null;
+    }
+
+    await this.refreshTokenStore.revoke(payload.sid);
+    const sessionExisted = await this.sessionStore.end(payload.sid);
+
+    this.logger.log(
+      `User logged out: ${payload.sub}, sessionId=${payload.sid}, sessionExisted=${sessionExisted}`,
+    );
+
+    const username = await this.findUsername(payload.sub);
+    return username ? { username } : null;
+  }
+
+  /** 依次用 access token、refresh token 识别会话；都不可用返回 null */
+  private async resolveSessionForLogout(
+    credentials: LogoutCredentials,
+  ): Promise<AccessTokenPayload | null> {
+    if (credentials.accessToken) {
+      const payload = await this.tokenService.decodeExpiredAccessToken(credentials.accessToken);
+      if (payload?.sid) return payload;
+    }
+
+    if (credentials.refreshToken) {
+      const payload = await this.tokenService.decodeExpiredRefreshToken(credentials.refreshToken);
+      if (payload?.sid) return payload;
+    }
+
+    return null;
+  }
+
+  /** 查询用户名用于审计；失败返回 null，不影响登出结果 */
+  private async findUsername(userId: string): Promise<string | null> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId: BigInt(userId) },
+        select: { userName: true },
+      });
+      return user?.userName ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /**
