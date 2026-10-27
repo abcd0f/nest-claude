@@ -1,11 +1,8 @@
 import {
   andWhere,
-  makePageMeta,
-  PageResponseDto,
-  paginate,
   parseId,
   toDto,
-  toPageDto,
+  toDtoList,
 } from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -214,31 +211,23 @@ export class DeptService {
 
   /**
    * 获取部门列表
+   *
+   * 部门是树形结构，必须拿到完整层级才能正确渲染，分页会把父节点截断，
+   * 因此这里不分页：一次返回全部未删除部门，由前端按 `parentId` 自行组树。
+   * `dto` 中只有 `status` 生效，`page` / `pageSize` 不再起作用。
+   *
    * @param dto 列表查询 DTO
-   * @returns 分页响应
+   * @returns 部门列表（按 `orderNum`、`deptId` 升序）
    */
-  async listDepts(dto: ListDeptDto): Promise<PageResponseDto<DeptResponseDto>> {
-    const { skip, take, page, pageSize } = paginate({
-      page: dto.page,
-      pageSize: dto.pageSize,
-    });
-
+  async listDepts(dto: ListDeptDto): Promise<DeptResponseDto[]> {
     const where = andWhere(dto.status ? { status: dto.status } : null, { delFlag: '0' });
 
-    const [items, total] = await Promise.all([
-      this.prisma.dept.findMany({
-        where,
-        skip,
-        take,
-        orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
-      }),
-      this.prisma.dept.count({ where }),
-    ]);
-
-    return toPageDto(DeptResponseDto, {
-      items,
-      meta: makePageMeta(page, pageSize, total),
+    const items = await this.prisma.dept.findMany({
+      where,
+      orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
     });
+
+    return toDtoList(DeptResponseDto, items);
   }
 
   /**
