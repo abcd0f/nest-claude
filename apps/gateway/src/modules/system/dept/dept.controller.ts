@@ -4,11 +4,15 @@ import { DeptService } from './dept.service.js';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
 import { DeptIdParamDto } from './dto/dept-id-param.dto.js';
 import { DeptResponseDto } from './dto/dept-response.dto.js';
+import { DeptTreeDto } from './dto/dept-tree.dto.js';
 import { ListDeptDto } from './dto/list-dept.dto.js';
 import { UpdateDeptDto } from './dto/update-dept.dto.js';
 
 /**
  * 部门管理控制器
+ *
+ * 注意路由顺序：`@Get('tree')` 必须写在 `@Get(':deptId')` 之前，
+ * 否则 `tree` 会被当成部门 ID 匹配走，然后在 `parseId` 处报 422。
  */
 @Controller('system/dept')
 export class DeptController {
@@ -22,6 +26,19 @@ export class DeptController {
   @Permission('system:dept:view')
   async listDepts(@Query() dto: ListDeptDto): Promise<DeptResponseDto[]> {
     return this.deptService.listDepts(dto);
+  }
+
+  /**
+   * 获取部门树
+   *
+   * 返回已组好层级、面向树形组件的精简结构，
+   * 字段为 `id` / `parentId` / `label` / `weight` / `disabled` / `children`。
+   * GET /system/dept/tree
+   */
+  @Get('tree')
+  @Permission('system:dept:view')
+  async getDeptTree(): Promise<DeptTreeDto[]> {
+    return this.deptService.getDeptTree();
   }
 
   /**

@@ -1,13 +1,9 @@
-import {
-  andWhere,
-  parseId,
-  toDto,
-  toDtoList,
-} from '@app/common';
+import { andWhere, parseId, toDto, toDtoList } from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
 import { DeptResponseDto } from './dto/dept-response.dto.js';
+import { DeptTreeDto } from './dto/dept-tree.dto.js';
 import { ListDeptDto } from './dto/list-dept.dto.js';
 import { UpdateDeptDto } from './dto/update-dept.dto.js';
 
@@ -228,6 +224,72 @@ export class DeptService {
     });
 
     return toDtoList(DeptResponseDto, items);
+  }
+
+  /**
+   * 获取部门树
+   *
+   * 返回给树形组件用的精简结构（`id/parentId/label/weight/disabled/children`），
+   * 与 `listDepts()` 的分工：
+   * - `listDepts()` 给表格用，扁平、字段全（含 `createTime` / `leaderId` / `remark`）；
+   * - 本方法给树选择器用，字段少、层级已由后端组好。
+   *
+   * 实现要点：
+   * - 一次查全表，在内存里用 Map 建树（O(n)），不按层级递归查库（避免 N+1）；
+   * - **不按 `status` 过滤**：停用的部门用 `disabled: true` 标记而不是丢弃，
+   *   否则其子树会因为找不到父节点而整枝消失；
+   * - 父节点缺失（数据异常）的节点提升到根层，宁可位置不对也不能凭空少数据；
+   * - `parentId` 指向自己（脏数据）的节点直接当根节点处理，否则会自引用成环，
+   *   序列化阶段直接抛 `Converting circular structure to JSON`。
+   *
+   * @returns 部门树，同级按 `orderNum`、`deptId` 升序
+   */
+  async getDeptTree(): Promise<DeptTreeDto[]> {
+    const depts = await this.prisma.dept.findMany({
+      where: { delFlag: '0' },
+      orderBy: [{ orderNum: 'asc' }, { deptId: 'asc' }],
+      select: { deptId: true, parentId: true, deptName: true, orderNum: true, status: true },
+    });
+
+    // 建树用的中间节点：`id` / `parentId` 保持 BigInt（与库一致），
+    // 最后统一交给 `toDtoList()` 做类型转换，不在每个节点上手工 toString。
+    type TreeNode = Omit<DeptTreeDto, 'children' | 'id' | 'parentId'> & {
+      children: TreeNode[];
+      id: bigint;
+      parentId: bigint;
+    };
+
+    // 用字符串做 Map key：BigInt 直接当 key 虽然能命中，但一旦上游改了字段类型
+    // （比如某天 `parentId` 变成 string）匹配会静默失效，统一 toString 更稳。
+    const nodeMap = new Map<string, TreeNode>();
+
+    for (const dept of depts) {
+      const key = dept.deptId.toString();
+      nodeMap.set(key, {
+        id: dept.deptId,
+        parentId: dept.parentId,
+        label: dept.deptName,
+        weight: dept.orderNum,
+        disabled: dept.status === '1',
+        children: [],
+      });
+    }
+
+    const tree: TreeNode[] = [];
+
+    // Map 保持插入顺序（即 orderNum、deptId 升序），push 顺序天然就是排序结果。
+    for (const [key, node] of nodeMap) {
+      const parent = nodeMap.get(node.parentId.toString());
+
+      if (parent && parent.id.toString() !== key) {
+        parent.children.push(node);
+      } else {
+        // parentId = 0 的真根节点，以及父节点缺失/自引用的脏数据
+        tree.push(node);
+      }
+    }
+
+    return toDtoList(DeptTreeDto, tree);
   }
 
   /**
