@@ -1,3 +1,4 @@
+import { DateFormat } from '@app/core/decorators/index.js';
 import { Expose, Transform } from 'class-transformer';
 
 /**
@@ -50,5 +51,6 @@ export class LoginLogResponseDto {
    * 登录时间
    */
   @Expose()
+  @DateFormat()
   loginTime!: Date;
 }

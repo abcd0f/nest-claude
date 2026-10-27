@@ -1,5 +1,6 @@
 import type { MenuModel } from '@app/database/generated/prisma/models/Menu.js';
 import type { MenuRouteMetaDto } from './dto/menu-route.dto.js';
+import { toDto, toDtoList } from '@app/common/dto/dto-transformer.js';
 import { parseId } from '@app/common/utils/bigint.util.js';
 import { andWhere } from '@app/common/utils/where.util.js';
 import { PrismaService } from '@app/database';
@@ -11,7 +12,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { CreateMenuDto } from './dto/create-menu.dto.js';
 import { ListMenuDto } from './dto/list-menu.dto.js';
 import { MenuResponseDto, MenuTreeDto } from './dto/menu-response.dto.js';
@@ -57,9 +57,7 @@ export class MenuService {
       orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
     });
 
-    const menuDtos = menus.map((menu) =>
-      plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true }),
-    );
+    const menuDtos = toDtoList(MenuResponseDto, menus);
 
     return this.buildTree(menuDtos, 0n);
   }
@@ -90,9 +88,7 @@ export class MenuService {
       orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
     });
 
-    return menus.map((menu) =>
-      plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true }),
-    );
+    return toDtoList(MenuResponseDto, menus);
   }
 
   /**
@@ -314,7 +310,7 @@ export class MenuService {
       throw new NotFoundException(`菜单 ${menuId} 不存在`);
     }
 
-    return plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true });
+    return toDto(MenuResponseDto, menu);
   }
 
   /**
@@ -360,7 +356,7 @@ export class MenuService {
 
         this.logger.log(`Created menu ${menu.menuId}: ${menu.menuName}`);
 
-        return plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true });
+        return toDto(MenuResponseDto, menu);
       },
       { timeout: 10_000 },
     );
@@ -422,7 +418,7 @@ export class MenuService {
 
         this.logger.log(`Updated menu ${menu.menuId}: ${menu.menuName}`);
 
-        return plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true });
+        return toDto(MenuResponseDto, menu);
       },
       { timeout: 10_000 },
     );
@@ -511,17 +507,11 @@ export class MenuService {
 
     const checkedKeys = roleMenus.map((rm) => rm.menuId.toString());
 
-    const menuDtos = allMenus.map((menu) =>
-      plainToInstance(MenuResponseDto, menu, { excludeExtraneousValues: true }),
-    );
+    const menuDtos = toDtoList(MenuResponseDto, allMenus);
 
     const tree = this.buildTree(menuDtos, 0n);
 
-    return plainToInstance(
-      RoleMenuTreeDto,
-      { menus: tree, checkedKeys },
-      { excludeExtraneousValues: true },
-    );
+    return toDto(RoleMenuTreeDto, { menus: tree, checkedKeys });
   }
 
   /**

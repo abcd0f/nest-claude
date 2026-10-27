@@ -1,3 +1,4 @@
+import { DateFormat } from '@app/core/decorators/index.js';
 import { Expose, Transform } from 'class-transformer';
 
 /**
@@ -87,5 +88,6 @@ export class OperationLogResponseDto {
    * 操作时间
    */
   @Expose()
+  @DateFormat()
   operTime!: Date;
 }

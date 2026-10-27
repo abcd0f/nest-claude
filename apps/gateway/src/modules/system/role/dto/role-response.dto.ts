@@ -1,3 +1,4 @@
+import { DateFormat } from '@app/core/decorators/index.js';
 import { Expose, Transform } from 'class-transformer';
 
 /**
@@ -49,6 +50,7 @@ export class RoleResponseDto {
    * 创建时间
    */
   @Expose()
+  @DateFormat()
   createTime!: Date;
 
   /**
@@ -57,6 +59,7 @@ export class RoleResponseDto {
    * 从未更新过时为 null。
    */
   @Expose()
+  @DateFormat()
   updateTime?: Date | null;
 
   /**

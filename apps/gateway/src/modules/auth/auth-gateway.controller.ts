@@ -1,9 +1,9 @@
 import type { UserPrincipal } from '@app/auth';
 import { LoginLogService } from '@app/audit';
 import { AuthService, CurrentUser, LoginDto, Public, UserProfileDto } from '@app/auth';
+import { toDto } from '@app/common';
 import { Body, Controller, Get, Post, Req, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { plainToInstance } from 'class-transformer';
 
 /**
  * 认证控制器（网关层唯一 HTTP 入口）
@@ -106,7 +106,7 @@ export class AuthGatewayController {
   getCurrentUser(@CurrentUser() user: UserPrincipal): UserProfileDto {
     console.log(user, '1111111111');
 
-    return plainToInstance(UserProfileDto, user, { excludeExtraneousValues: true });
+    return toDto(UserProfileDto, user);
   }
 
   /**

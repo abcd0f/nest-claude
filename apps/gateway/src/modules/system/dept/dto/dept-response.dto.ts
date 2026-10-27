@@ -1,3 +1,4 @@
+import { DateFormat } from '@app/core/decorators/index.js';
 import { Expose, Transform } from 'class-transformer';
 
 /**
@@ -55,6 +56,7 @@ export class DeptResponseDto {
    * 创建时间
    */
   @Expose()
+  @DateFormat()
   createTime!: Date;
 
   /**
@@ -63,6 +65,7 @@ export class DeptResponseDto {
    * 从未更新过时为 null。
    */
   @Expose()
+  @DateFormat()
   updateTime?: Date | null;
 
   /**

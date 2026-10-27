@@ -1,10 +1,14 @@
-import { PageResponseDto } from '@app/common/dto/base.dto.js';
-import { parseId } from '@app/common/utils/bigint.util.js';
-import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
-import { andWhere } from '@app/common/utils/where.util.js';
+import {
+  andWhere,
+  makePageMeta,
+  PageResponseDto,
+  paginate,
+  parseId,
+  toDto,
+  toPageDto,
+} from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { MenuService } from '../menu/menu.service.js';
 import { CreateRoleDto } from './dto/create-role.dto.js';
 import { ListRoleDto } from './dto/list-role.dto.js';
@@ -44,7 +48,7 @@ export class RoleService {
       throw new NotFoundException(`角色 ${roleId} 不存在`);
     }
 
-    return plainToInstance(RoleResponseDto, role, { excludeExtraneousValues: true });
+    return toDto(RoleResponseDto, role);
   }
 
   /**
@@ -75,7 +79,7 @@ export class RoleService {
 
     this.logger.log(`Created role ${role.roleId}: ${role.roleName}`);
 
-    return plainToInstance(RoleResponseDto, role, { excludeExtraneousValues: true });
+    return toDto(RoleResponseDto, role);
   }
 
   /**
@@ -118,7 +122,7 @@ export class RoleService {
 
     this.logger.log(`Updated role ${role.roleId}: ${role.roleName}`);
 
-    return plainToInstance(RoleResponseDto, role, { excludeExtraneousValues: true });
+    return toDto(RoleResponseDto, role);
   }
 
   /**
@@ -195,14 +199,10 @@ export class RoleService {
       this.prisma.role.count({ where }),
     ]);
 
-    const roleDtos = items.map((item) =>
-      plainToInstance(RoleResponseDto, item, { excludeExtraneousValues: true }),
-    );
-
-    return {
-      items: roleDtos,
+    return toPageDto(RoleResponseDto, {
+      items,
       meta: makePageMeta(page, pageSize, total),
-    };
+    });
   }
 
   /**

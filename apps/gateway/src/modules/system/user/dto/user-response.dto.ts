@@ -1,3 +1,4 @@
+import { DateFormat } from '@app/core/decorators/index.js';
 import { Expose, Transform } from 'class-transformer';
 
 /**
@@ -80,12 +81,14 @@ export class UserResponseDto {
    * 从未登录时为 null。
    */
   @Expose()
+  @DateFormat()
   loginDate?: Date | null;
 
   /**
    * 创建时间
    */
   @Expose()
+  @DateFormat()
   createTime!: Date;
 
   /**
@@ -94,6 +97,7 @@ export class UserResponseDto {
    * 从未更新过时为 null。
    */
   @Expose()
+  @DateFormat()
   updateTime?: Date | null;
 
   /**

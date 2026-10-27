@@ -1,10 +1,14 @@
-import { PageResponseDto } from '@app/common/dto/base.dto.js';
-import { parseId } from '@app/common/utils/bigint.util.js';
-import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
-import { andWhere } from '@app/common/utils/where.util.js';
+import {
+  andWhere,
+  makePageMeta,
+  PageResponseDto,
+  paginate,
+  parseId,
+  toDto,
+  toPageDto,
+} from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { ListUserDto } from './dto/list-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
@@ -40,7 +44,7 @@ export class UserService {
       throw new NotFoundException(`用户 ${userId} 不存在`);
     }
 
-    return plainToInstance(UserResponseDto, user, { excludeExtraneousValues: true });
+    return toDto(UserResponseDto, user);
   }
 
   /**
@@ -144,7 +148,7 @@ export class UserService {
 
         this.logger.log(`Created user ${user.userId}: ${user.userName}`);
 
-        return plainToInstance(UserResponseDto, user, { excludeExtraneousValues: true });
+        return toDto(UserResponseDto, user);
       },
       { timeout: 10_000 },
     );
@@ -237,7 +241,7 @@ export class UserService {
 
         this.logger.log(`Updated user ${user.userId}: ${user.userName}`);
 
-        return plainToInstance(UserResponseDto, user, { excludeExtraneousValues: true });
+        return toDto(UserResponseDto, user);
       },
       { timeout: 10_000 },
     );
@@ -307,14 +311,10 @@ export class UserService {
       this.prisma.user.count({ where }),
     ]);
 
-    const userDtos = items.map((item) =>
-      plainToInstance(UserResponseDto, item, { excludeExtraneousValues: true }),
-    );
-
-    return {
-      items: userDtos,
+    return toPageDto(UserResponseDto, {
+      items,
       meta: makePageMeta(page, pageSize, total),
-    };
+    });
   }
 
   /**

@@ -1,9 +1,8 @@
 import type { LoginLogQueryDto, OperationLogQueryDto } from '@app/audit';
 import { LoginLogResponseDto, OperationLogResponseDto } from '@app/audit';
-import { parseId } from '@app/common';
+import { parseId, toDtoList } from '@app/common';
 import { PrismaService } from '@app/database';
 import { Injectable } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 
 /**
  * 审计查询服务
@@ -62,9 +61,7 @@ export class AuditQueryService {
     ]);
 
     return {
-      records: plainToInstance(LoginLogResponseDto, records, {
-        excludeExtraneousValues: true,
-      }),
+      records: toDtoList(LoginLogResponseDto, records),
       total,
       page,
       pageSize,
@@ -121,9 +118,7 @@ export class AuditQueryService {
     ]);
 
     return {
-      records: plainToInstance(OperationLogResponseDto, records, {
-        excludeExtraneousValues: true,
-      }),
+      records: toDtoList(OperationLogResponseDto, records),
       total,
       page,
       pageSize,

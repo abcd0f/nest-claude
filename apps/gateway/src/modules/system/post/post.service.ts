@@ -1,10 +1,14 @@
-import { PageResponseDto } from '@app/common/dto/base.dto.js';
-import { parseId } from '@app/common/utils/bigint.util.js';
-import { makePageMeta, paginate } from '@app/common/utils/page.util.js';
-import { andWhere } from '@app/common/utils/where.util.js';
+import {
+  andWhere,
+  makePageMeta,
+  PageResponseDto,
+  paginate,
+  parseId,
+  toDto,
+  toPageDto,
+} from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { CreatePostDto } from './dto/create-post.dto.js';
 import { ListPostDto } from './dto/list-post.dto.js';
 import { PostResponseDto } from './dto/post-response.dto.js';
@@ -38,7 +42,7 @@ export class PostService {
       throw new NotFoundException(`职位 ${postId} 不存在`);
     }
 
-    return plainToInstance(PostResponseDto, post, { excludeExtraneousValues: true });
+    return toDto(PostResponseDto, post);
   }
 
   /**
@@ -68,7 +72,7 @@ export class PostService {
 
     this.logger.log(`Created post ${post.postId}: ${post.postName}`);
 
-    return plainToInstance(PostResponseDto, post, { excludeExtraneousValues: true });
+    return toDto(PostResponseDto, post);
   }
 
   /**
@@ -110,7 +114,7 @@ export class PostService {
 
     this.logger.log(`Updated post ${post.postId}: ${post.postName}`);
 
-    return plainToInstance(PostResponseDto, post, { excludeExtraneousValues: true });
+    return toDto(PostResponseDto, post);
   }
 
   /**
@@ -178,13 +182,9 @@ export class PostService {
       this.prisma.post.count({ where }),
     ]);
 
-    const postDtos = items.map((item) =>
-      plainToInstance(PostResponseDto, item, { excludeExtraneousValues: true }),
-    );
-
-    return {
-      items: postDtos,
+    return toPageDto(PostResponseDto, {
+      items,
       meta: makePageMeta(page, pageSize, total),
-    };
+    });
   }
 }
