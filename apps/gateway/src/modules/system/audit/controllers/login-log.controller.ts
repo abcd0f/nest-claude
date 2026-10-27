@@ -1,4 +1,4 @@
-import { LoginLogQueryDto } from '@app/audit';
+import { Audit, LoginLogQueryDto, OperationType } from '@app/audit';
 import { Permission } from '@app/permission';
 import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { AuditQueryService } from '../services/audit-query.service.js';
@@ -23,6 +23,7 @@ export class LoginLogController {
    * 删除登录日志
    */
   @Delete(':infoId')
+  @Audit({ title: '删除登录日志', operationType: OperationType.DELETE })
   @Permission('system:loginLog:remove')
   async delete(@Param('infoId') infoId: string) {
     await this.auditQueryService.deleteLoginLog(infoId);
@@ -32,6 +33,7 @@ export class LoginLogController {
    * 批量删除登录日志
    */
   @Delete()
+  @Audit({ title: '批量删除登录日志', operationType: OperationType.DELETE })
   @Permission('system:loginLog:remove')
   async batchDelete(@Body('infoIds') infoIds: string[]) {
     await this.auditQueryService.batchDeleteLoginLogs(infoIds);

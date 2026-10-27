@@ -114,7 +114,7 @@ auth:
   # JWT 刷新令牌密钥（必须与访问令牌密钥不同）
   refresh-token-secret: CHANGE_ME_IN_PRODUCTION_REFRESH_TOKEN_SECRET
   # 访问令牌有效期（秒）- 建议 15分钟到1小时
-  access-token-ttl: 10
+  access-token-ttl: 1800
   # 刷新令牌有效期（秒）- 建议 7天到30天
   refresh-token-ttl: 604800
   # JWT 签发者
