@@ -19,6 +19,16 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   /**
+   * 获取用户列表
+   * GET /system/user?page=1&pageSize=20&search=&status=0&deptId=
+   */
+  @Get('list')
+  @Permission('system:user:view')
+  async listUsers(@Query() dto: ListUserDto): Promise<PageResponseDto<UserResponseDto>> {
+    return this.userService.listUsers(dto);
+  }
+
+  /**
    * 获取用户详情
    * GET /system/user/:userId
    */
@@ -78,16 +88,6 @@ export class UserController {
   @Permission('system:user:remove')
   async deleteUser(@Param() params: UserIdParamDto): Promise<void> {
     await this.userService.deleteUser(params.userId);
-  }
-
-  /**
-   * 获取用户列表
-   * GET /system/user?page=1&pageSize=20&search=&status=0&deptId=
-   */
-  @Get()
-  @Permission('system:user:view')
-  async listUsers(@Query() dto: ListUserDto): Promise<PageResponseDto<UserResponseDto>> {
-    return this.userService.listUsers(dto);
   }
 
   /**

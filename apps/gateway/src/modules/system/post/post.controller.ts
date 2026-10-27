@@ -16,6 +16,16 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   /**
+   * 获取职位列表
+   * GET /system/post?page=1&pageSize=20&search=&status=0
+   */
+  @Get('list')
+  @Permission('system:post:view')
+  async listPosts(@Query() dto: ListPostDto): Promise<PageResponseDto<PostResponseDto>> {
+    return this.postService.listPosts(dto);
+  }
+
+  /**
    * 获取职位详情
    * GET /system/post/:postId
    */
@@ -56,15 +66,5 @@ export class PostController {
   @Permission('system:post:remove')
   async deletePost(@Param() params: PostIdParamDto): Promise<void> {
     return this.postService.deletePost(params.postId);
-  }
-
-  /**
-   * 获取职位列表
-   * GET /system/post?page=1&pageSize=20&search=&status=0
-   */
-  @Get()
-  @Permission('system:post:view')
-  async listPosts(@Query() dto: ListPostDto): Promise<PageResponseDto<PostResponseDto>> {
-    return this.postService.listPosts(dto);
   }
 }

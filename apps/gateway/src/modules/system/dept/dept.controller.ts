@@ -15,6 +15,16 @@ export class DeptController {
   constructor(private readonly deptService: DeptService) {}
 
   /**
+   * 获取部门列表
+   * GET /system/dept?status=0
+   */
+  @Get('list')
+  @Permission('system:dept:view')
+  async listDepts(@Query() dto: ListDeptDto): Promise<DeptResponseDto[]> {
+    return this.deptService.listDepts(dto);
+  }
+
+  /**
    * 获取部门详情
    * GET /system/dept/:deptId
    */
@@ -55,15 +65,5 @@ export class DeptController {
   @Permission('system:dept:remove')
   async deleteDept(@Param() params: DeptIdParamDto): Promise<void> {
     return this.deptService.deleteDept(params.deptId);
-  }
-
-  /**
-   * 获取部门列表
-   * GET /system/dept?status=0
-   */
-  @Get()
-  @Permission('system:dept:view')
-  async listDepts(@Query() dto: ListDeptDto): Promise<DeptResponseDto[]> {
-    return this.deptService.listDepts(dto);
   }
 }

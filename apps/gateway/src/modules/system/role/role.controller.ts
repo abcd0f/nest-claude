@@ -18,6 +18,16 @@ export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   /**
+   * 获取角色列表
+   * GET /system/role?page=1&pageSize=20&search=&status=0
+   */
+  @Get('list')
+  @Permission('system:role:view')
+  async listRoles(@Query() dto: ListRoleDto): Promise<PageResponseDto<RoleResponseDto>> {
+    return this.roleService.listRoles(dto);
+  }
+
+  /**
    * 获取角色详情
    * GET /system/role/:roleId
    */
@@ -58,16 +68,6 @@ export class RoleController {
   @Permission('system:role:remove')
   async deleteRole(@Param() params: RoleIdParamDto): Promise<void> {
     return this.roleService.deleteRole(params.roleId);
-  }
-
-  /**
-   * 获取角色列表
-   * GET /system/role?page=1&pageSize=20&search=&status=0
-   */
-  @Get()
-  @Permission('system:role:view')
-  async listRoles(@Query() dto: ListRoleDto): Promise<PageResponseDto<RoleResponseDto>> {
-    return this.roleService.listRoles(dto);
   }
 
   /**

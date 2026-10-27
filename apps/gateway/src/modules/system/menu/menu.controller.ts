@@ -29,21 +29,21 @@ export class MenuController {
   constructor(private readonly menuService: MenuService) {}
 
   /**
-   * 获取菜单树
-   * GET /system/menu/tree
-   */
-  @Get('tree')
-  async getMenuTree(): Promise<MenuTreeDto[]> {
-    return this.menuService.getMenuTree();
-  }
-
-  /**
    * 获取菜单列表（表格用，扁平结构，不分页）
    * GET /system/menu/list?menuName=&status=0&visible=0&parentId=
    */
   @Get('list')
   async listMenus(@Query() dto: ListMenuDto): Promise<MenuResponseDto[]> {
     return this.menuService.listMenus(dto);
+  }
+
+  /**
+   * 获取菜单树
+   * GET /system/menu/tree
+   */
+  @Get('tree')
+  async getMenuTree(): Promise<MenuTreeDto[]> {
+    return this.menuService.getMenuTree();
   }
 
   /**
