@@ -1,6 +1,7 @@
 import type { LoginLogQueryDto, OperationLogQueryDto } from '@app/audit';
+import type { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { LoginLogResponseDto, OperationLogResponseDto } from '@app/audit';
-import { parseId, toDtoList } from '@app/common';
+import { makePageMeta, paginate, parseId, toPageDto } from '@app/common';
 import { PrismaService } from '@app/database';
 import { Injectable } from '@nestjs/common';
 
@@ -14,7 +15,9 @@ export class AuditQueryService {
   /**
    * 查询登录日志
    */
-  async queryLoginLogs(query: LoginLogQueryDto) {
+  async queryLoginLogs(
+    query: LoginLogQueryDto,
+  ): Promise<PageResponseDto<LoginLogResponseDto>> {
     const where: {
       userName?: { contains: string };
       ipaddr?: { contains: string };
@@ -44,32 +47,30 @@ export class AuditQueryService {
       }
     }
 
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 10;
-    const skip = (page - 1) * pageSize;
+    const { skip, take, page, pageSize } = paginate(query);
 
     const [records, total] = await this.prisma.$transaction([
       this.prisma.loginLog.findMany({
         where,
         orderBy: { loginTime: 'desc' },
         skip,
-        take: pageSize,
+        take,
       }),
       this.prisma.loginLog.count({ where }),
     ]);
 
-    return {
-      records: toDtoList(LoginLogResponseDto, records),
-      total,
-      page,
-      pageSize,
-    };
+    return toPageDto(LoginLogResponseDto, {
+      items: records,
+      meta: makePageMeta(page, pageSize, total),
+    });
   }
 
   /**
    * 查询操作日志
    */
-  async queryOperationLogs(query: OperationLogQueryDto) {
+  async queryOperationLogs(
+    query: OperationLogQueryDto,
+  ): Promise<PageResponseDto<OperationLogResponseDto>> {
     const where: {
       title?: { contains: string };
       operUserId?: bigint;
@@ -99,26 +100,22 @@ export class AuditQueryService {
       }
     }
 
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 10;
-    const skip = (page - 1) * pageSize;
+    const { skip, take, page, pageSize } = paginate(query);
 
     const [records, total] = await this.prisma.$transaction([
       this.prisma.operLog.findMany({
         where,
         orderBy: { operTime: 'desc' },
         skip,
-        take: pageSize,
+        take,
       }),
       this.prisma.operLog.count({ where }),
     ]);
 
-    return {
-      records: toDtoList(OperationLogResponseDto, records),
-      total,
-      page,
-      pageSize,
-    };
+    return toPageDto(OperationLogResponseDto, {
+      items: records,
+      meta: makePageMeta(page, pageSize, total),
+    });
   }
 
   /**

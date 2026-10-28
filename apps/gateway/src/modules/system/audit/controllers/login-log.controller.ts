@@ -1,4 +1,5 @@
-import { Audit, LoginLogQueryDto, OperationType } from '@app/audit';
+import type { PageResponseDto } from '@app/common/dto/base.dto.js';
+import { Audit, LoginLogQueryDto, LoginLogResponseDto, OperationType } from '@app/audit';
 import { Permission } from '@app/permission';
 import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { AuditQueryService } from '../services/audit-query.service.js';
@@ -15,7 +16,9 @@ export class LoginLogController {
    */
   @Get()
   @Permission('system:loginLog:view')
-  async list(@Query() query: LoginLogQueryDto) {
+  async list(
+    @Query() query: LoginLogQueryDto,
+  ): Promise<PageResponseDto<LoginLogResponseDto>> {
     return this.auditQueryService.queryLoginLogs(query);
   }
 
