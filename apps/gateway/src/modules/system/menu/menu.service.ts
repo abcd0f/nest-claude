@@ -406,7 +406,6 @@ export class MenuService {
             perms: dto.perms?.trim() || null,
             icon: dto.icon,
             remark: dto.remark,
-            updateTime: new Date(),
           },
         });
 

@@ -15,7 +15,7 @@ model Post {
   /// 创建时间
   createTime DateTime @default(now()) @map("create_time") @db.Timestamptz(6)
   /// 更新时间
-  updateTime DateTime? @map("update_time") @db.Timestamptz(6)
+  updateTime DateTime? @updatedAt @map("update_time") @db.Timestamptz(6)
   /// 备注
   remark     String?  @db.VarChar(500)
 

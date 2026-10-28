@@ -104,7 +104,6 @@ export class RoleService {
         ...(dto.orderNum !== undefined && { orderNum: dto.orderNum }),
         ...(dto.dataScope && { dataScope: dto.dataScope }),
         ...(dto.status && { status: dto.status }),
-        updateTime: new Date(),
         remark: dto.remark,
       },
     });

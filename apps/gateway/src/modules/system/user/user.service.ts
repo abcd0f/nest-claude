@@ -206,7 +206,6 @@ export class UserService {
             ...(dto.sex && { sex: dto.sex }),
             ...(dto.status && { status: dto.status }),
             ...(dto.deptId !== undefined && { deptId: dto.deptId }),
-            updateTime: new Date(),
             remark: dto.remark,
           },
         });
@@ -404,7 +403,6 @@ export class UserService {
       where: { userId },
       data: {
         password: newPassword, // 实际应使用 bcrypt 加密
-        updateTime: new Date(),
       },
     });
 

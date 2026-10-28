@@ -143,7 +143,6 @@ export class DeptService {
             ...(leaderId !== undefined && { leaderId }),
             ...(dto.status && { status: dto.status }),
             ...(ancestors !== existing.ancestors && { ancestors }),
-            updateTime: new Date(),
             remark: dto.remark,
           },
         });

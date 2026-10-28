@@ -96,7 +96,6 @@ export class PostService {
         ...(dto.postName && { postName: dto.postName }),
         ...(dto.orderNum !== undefined && { orderNum: dto.orderNum }),
         ...(dto.status && { status: dto.status }),
-        updateTime: new Date(),
         remark: dto.remark,
       },
     });
