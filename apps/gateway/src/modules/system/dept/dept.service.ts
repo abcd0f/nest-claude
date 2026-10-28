@@ -1,4 +1,4 @@
-import { andWhere, parseId, toDto, toDtoList } from '@app/common';
+import { andWhere, toDto, toDtoList } from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateDeptDto } from './dto/create-dept.dto.js';
@@ -24,13 +24,12 @@ export class DeptService {
 
   /**
    * 获取部门详情
-   * @param deptId 部门 ID（字符串）
+   * @param deptId 部门 ID（bigint）
    * @returns 部门详情
    */
-  async getDeptById(deptId: string): Promise<DeptResponseDto> {
-    const id = parseId(deptId, 'deptId');
+  async getDeptById(deptId: bigint): Promise<DeptResponseDto> {
     const dept = await this.prisma.dept.findUnique({
-      where: { deptId: id },
+      where: { deptId },
     });
 
     if (!dept) {
@@ -46,8 +45,8 @@ export class DeptService {
    * @returns 创建的部门
    */
   async createDept(dto: CreateDeptDto): Promise<DeptResponseDto> {
-    const parentId = parseId(dto.parentId, 'parentId');
-    const leaderId = dto.leaderId ? parseId(dto.leaderId, 'leaderId') : null;
+    const parentId = dto.parentId;
+    const leaderId = dto.leaderId ?? null;
 
     return await this.prisma.$transaction(
       async (tx) => {
@@ -96,19 +95,18 @@ export class DeptService {
 
   /**
    * 更新部门
-   * @param deptId 部门 ID（字符串）
+   * @param deptId 部门 ID（bigint）
    * @param dto 更新部门 DTO
    * @returns 更新后的部门
    */
-  async updateDept(deptId: string, dto: UpdateDeptDto): Promise<DeptResponseDto> {
-    const id = parseId(deptId, 'deptId');
-    const parentId = dto.parentId ? parseId(dto.parentId, 'parentId') : undefined;
-    const leaderId = dto.leaderId ? parseId(dto.leaderId, 'leaderId') : undefined;
+  async updateDept(deptId: bigint, dto: UpdateDeptDto): Promise<DeptResponseDto> {
+    const parentId = dto.parentId;
+    const leaderId = dto.leaderId;
 
     return await this.prisma.$transaction(
       async (tx) => {
         // 检查部门是否存在
-        const existing = await tx.dept.findUnique({ where: { deptId: id } });
+        const existing = await tx.dept.findUnique({ where: { deptId } });
         if (!existing) {
           throw new NotFoundException(`部门 ${deptId} 不存在`);
         }
@@ -124,7 +122,7 @@ export class DeptService {
             }
 
             // 检查循环依赖
-            const descendants = await this.getDescendantIds(id, tx);
+            const descendants = await this.getDescendantIds(deptId, tx);
             if (descendants.includes(parentId)) {
               throw new BadRequestException('父部门不能是当前部门的后代，会形成循环');
             }
@@ -137,7 +135,7 @@ export class DeptService {
 
         // 更新部门
         const dept = await tx.dept.update({
-          where: { deptId: id },
+          where: { deptId },
           data: {
             ...(parentId !== undefined && { parentId }),
             ...(dto.deptName && { deptName: dto.deptName }),
@@ -151,8 +149,8 @@ export class DeptService {
         });
 
         // 如果父部门或 ID 变化，需要更新所有后代的 ancestors
-        if ((parentId !== undefined && parentId !== existing.parentId) || id !== existing.deptId) {
-          await this.updateDescendantAncestors(id, ancestors, tx);
+        if ((parentId !== undefined && parentId !== existing.parentId) || deptId !== existing.deptId) {
+          await this.updateDescendantAncestors(deptId, ancestors, tx);
         }
 
         this.logger.log(`Updated dept ${dept.deptId}: ${dept.deptName}`);
@@ -165,14 +163,12 @@ export class DeptService {
 
   /**
    * 删除部门
-   * @param deptId 部门 ID（字符串）
+   * @param deptId 部门 ID（bigint）
    */
-  async deleteDept(deptId: string): Promise<void> {
-    const id = parseId(deptId, 'deptId');
-
+  async deleteDept(deptId: bigint): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
-        const dept = await tx.dept.findUnique({ where: { deptId: id } });
+        const dept = await tx.dept.findUnique({ where: { deptId } });
 
         if (!dept) {
           throw new NotFoundException(`部门 ${deptId} 不存在`);
@@ -180,7 +176,7 @@ export class DeptService {
 
         // 检查是否有子部门
         const childCount = await tx.dept.count({
-          where: { parentId: id },
+          where: { parentId: deptId },
         });
 
         if (childCount > 0) {
@@ -189,7 +185,7 @@ export class DeptService {
 
         // 检查是否有用户
         const userCount = await tx.user.count({
-          where: { deptId: id },
+          where: { deptId },
         });
 
         if (userCount > 0) {
@@ -197,7 +193,7 @@ export class DeptService {
         }
 
         // 删除部门
-        await tx.dept.delete({ where: { deptId: id } });
+        await tx.dept.delete({ where: { deptId } });
 
         this.logger.log(`Deleted dept ${deptId}`);
       },

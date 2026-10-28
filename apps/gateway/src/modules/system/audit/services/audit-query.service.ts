@@ -1,7 +1,7 @@
 import type { LoginLogQueryDto, OperationLogQueryDto } from '@app/audit';
 import type { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { LoginLogResponseDto, OperationLogResponseDto } from '@app/audit';
-import { makePageMeta, paginate, parseId, toPageDto } from '@app/common';
+import { makePageMeta, paginate, toPageDto } from '@app/common';
 import { PrismaService } from '@app/database';
 import { Injectable } from '@nestjs/common';
 
@@ -83,7 +83,7 @@ export class AuditQueryService {
     }
 
     if (query.operUserId) {
-      where.operUserId = parseId(query.operUserId, 'operUserId');
+      where.operUserId = query.operUserId;
     }
 
     if (query.status) {
@@ -121,30 +121,27 @@ export class AuditQueryService {
   /**
    * 删除登录日志
    */
-  async deleteLoginLog(infoId: string): Promise<void> {
-    const id = parseId(infoId, 'infoId');
+  async deleteLoginLog(infoId: bigint): Promise<void> {
     await this.prisma.loginLog.delete({
-      where: { infoId: id },
+      where: { infoId },
     });
   }
 
   /**
    * 删除操作日志
    */
-  async deleteOperationLog(operId: string): Promise<void> {
-    const id = parseId(operId, 'operId');
+  async deleteOperationLog(operId: bigint): Promise<void> {
     await this.prisma.operLog.delete({
-      where: { operId: id },
+      where: { operId },
     });
   }
 
   /**
    * 批量删除登录日志
    */
-  async batchDeleteLoginLogs(infoIds: string[]): Promise<number> {
-    const ids = infoIds.map((id) => parseId(id, 'infoId'));
+  async batchDeleteLoginLogs(infoIds: bigint[]): Promise<number> {
     const result = await this.prisma.loginLog.deleteMany({
-      where: { infoId: { in: ids } },
+      where: { infoId: { in: infoIds } },
     });
     return result.count;
   }
@@ -152,10 +149,9 @@ export class AuditQueryService {
   /**
    * 批量删除操作日志
    */
-  async batchDeleteOperationLogs(operIds: string[]): Promise<number> {
-    const ids = operIds.map((id) => parseId(id, 'operId'));
+  async batchDeleteOperationLogs(operIds: bigint[]): Promise<number> {
     const result = await this.prisma.operLog.deleteMany({
-      where: { operId: { in: ids } },
+      where: { operId: { in: operIds } },
     });
     return result.count;
   }

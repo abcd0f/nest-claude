@@ -1,4 +1,5 @@
-import { IsArray, IsString, Matches, MinLength } from 'class-validator';
+import { IsArray, MinLength } from 'class-validator';
+import { BigIntId } from '../decorators/bigint-id.decorator.js';
 
 /**
  * 批量 ID 请求体 DTO
@@ -8,18 +9,14 @@ export class IdsBodyDto {
   /**
    * 资源 ID 列表
    *
-   * 至少一个元素，元素为十进制字符串（理由同 `IdParamDto.id`）。
+   * 至少一个十进制 ID，DTO 转换为 `bigint[]`。
    * 空数组返回 422，而不是静默执行空操作。
    * @example ["1","2","3"]
    */
   @IsArray({ message: 'ids 必须是数组' })
   @MinLength(1, { message: 'ids 至少需要一个 ID' })
-  @IsString({ each: true, message: 'ids 中的每个元素必须是字符串' })
-  @Matches(/^(0|[1-9]\d*)$/, {
-    each: true,
-    message: 'ids 中的每个元素必须是十进制字符串',
-  })
-  ids!: string[];
+  @BigIntId({ each: true })
+  ids!: bigint[];
 }
 
 /**
@@ -29,15 +26,11 @@ export class IdsBodyBaseDto {
   /**
    * 资源 ID 列表
    *
-   * 至少一个元素，元素为十进制字符串。
+   * 至少一个十进制 ID，DTO 转换为 `bigint[]`。
    * @example ["1","2","3"]
    */
   @IsArray({ message: 'ids 必须是数组' })
   @MinLength(1, { message: 'ids 至少需要一个 ID' })
-  @IsString({ each: true, message: 'ids 中的每个元素必须是字符串' })
-  @Matches(/^(0|[1-9]\d*)$/, {
-    each: true,
-    message: 'ids 中的每个元素必须是十进制字符串',
-  })
-  ids!: string[];
+  @BigIntId({ each: true })
+  ids!: bigint[];
 }

@@ -2,6 +2,8 @@ import type { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { Audit, LoginLogQueryDto, LoginLogResponseDto, OperationType } from '@app/audit';
 import { Permission } from '@app/permission';
 import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import { InfoIdParamDto } from '../dto/info-id-param.dto.js';
+import { InfoIdsBodyDto } from '../dto/info-ids-body.dto.js';
 import { AuditQueryService } from '../services/audit-query.service.js';
 
 /**
@@ -16,9 +18,7 @@ export class LoginLogController {
    */
   @Get()
   @Permission('system:loginLog:view')
-  async list(
-    @Query() query: LoginLogQueryDto,
-  ): Promise<PageResponseDto<LoginLogResponseDto>> {
+  async list(@Query() query: LoginLogQueryDto): Promise<PageResponseDto<LoginLogResponseDto>> {
     return this.auditQueryService.queryLoginLogs(query);
   }
 
@@ -28,8 +28,8 @@ export class LoginLogController {
   @Delete(':infoId')
   @Audit({ title: '删除登录日志', operationType: OperationType.DELETE })
   @Permission('system:loginLog:remove')
-  async delete(@Param('infoId') infoId: string) {
-    await this.auditQueryService.deleteLoginLog(infoId);
+  async delete(@Param() params: InfoIdParamDto) {
+    await this.auditQueryService.deleteLoginLog(params.infoId);
   }
 
   /**
@@ -38,8 +38,8 @@ export class LoginLogController {
   @Delete()
   @Audit({ title: '批量删除登录日志', operationType: OperationType.DELETE })
   @Permission('system:loginLog:remove')
-  async batchDelete(@Body('infoIds') infoIds: string[]) {
-    await this.auditQueryService.batchDeleteLoginLogs(infoIds);
+  async batchDelete(@Body() dto: InfoIdsBodyDto) {
+    await this.auditQueryService.batchDeleteLoginLogs(dto.infoIds);
   }
 
   /**

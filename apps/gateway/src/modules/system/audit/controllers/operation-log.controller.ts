@@ -2,6 +2,8 @@ import type { PageResponseDto } from '@app/common/dto/base.dto.js';
 import { OperationLogQueryDto, OperationLogResponseDto } from '@app/audit';
 import { Permission } from '@app/permission';
 import { Body, Controller, Delete, Get, Param, Query } from '@nestjs/common';
+import { OperIdParamDto } from '../dto/oper-id-param.dto.js';
+import { OperIdsBodyDto } from '../dto/oper-ids-body.dto.js';
 import { AuditQueryService } from '../services/audit-query.service.js';
 
 /**
@@ -27,8 +29,8 @@ export class OperationLogController {
    */
   @Delete(':operId')
   @Permission('system:operLog:remove')
-  async delete(@Param('operId') operId: string) {
-    await this.auditQueryService.deleteOperationLog(operId);
+  async delete(@Param() params: OperIdParamDto) {
+    await this.auditQueryService.deleteOperationLog(params.operId);
   }
 
   /**
@@ -36,8 +38,8 @@ export class OperationLogController {
    */
   @Delete()
   @Permission('system:operLog:remove')
-  async batchDelete(@Body('operIds') operIds: string[]) {
-    await this.auditQueryService.batchDeleteOperationLogs(operIds);
+  async batchDelete(@Body() dto: OperIdsBodyDto) {
+    await this.auditQueryService.batchDeleteOperationLogs(dto.operIds);
   }
 
   /**

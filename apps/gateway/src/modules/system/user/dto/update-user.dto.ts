@@ -1,10 +1,11 @@
+import { BigIntId } from '@app/common';
 import {
+  IsArray,
   IsEmail,
   IsIn,
   IsOptional,
   IsPhoneNumber,
   IsString,
-  Matches,
   MaxLength,
 } from 'class-validator';
 
@@ -65,9 +66,8 @@ export class UpdateUserDto {
    * 十进制字符串。传值即覆盖，无专门的「清空部门」语义。
    */
   @IsOptional()
-  @IsString()
-  @Matches(/^(0|[1-9]\d*)$/, { message: 'deptId 必须是十进制字符串' })
-  deptId?: string;
+  @BigIntId()
+  deptId?: bigint;
 
   /**
    * 角色 ID 列表
@@ -76,12 +76,9 @@ export class UpdateUserDto {
    * **不传**则保持原有角色不变。任一 ID 不存在时整体失败并返回 400。
    */
   @IsOptional()
-  @IsString({ each: true })
-  @Matches(/^(0|[1-9]\d*)$/, {
-    each: true,
-    message: '每个 roleId 必须是十进制字符串',
-  })
-  roleIds?: string[];
+  @IsArray()
+  @BigIntId({ each: true })
+  roleIds?: bigint[];
 
   /**
    * 职位 ID 列表
@@ -90,12 +87,9 @@ export class UpdateUserDto {
    * **不传**则保持原有职位不变。任一 ID 不存在时整体失败并返回 400。
    */
   @IsOptional()
-  @IsString({ each: true })
-  @Matches(/^(0|[1-9]\d*)$/, {
-    each: true,
-    message: '每个 postId 必须是十进制字符串',
-  })
-  postIds?: string[];
+  @IsArray()
+  @BigIntId({ each: true })
+  postIds?: bigint[];
 
   /**
    * 备注

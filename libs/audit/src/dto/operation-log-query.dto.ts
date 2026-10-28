@@ -1,6 +1,7 @@
+import { BigIntId } from '@app/common';
 import { PageQueryDto } from '@app/common/dto/base.dto.js';
 import { Transform, Type } from 'class-transformer';
-import { IsDate, IsIn, IsOptional, IsString, Matches } from 'class-validator';
+import { IsDate, IsIn, IsOptional, IsString } from 'class-validator';
 import { transformAuditQueryDate } from './audit-query-date.transformer.js';
 
 /**
@@ -21,12 +22,11 @@ export class OperationLogQueryDto extends PageQueryDto {
   /**
    * 操作人用户 ID
    *
-   * 十进制字符串；格式非法时返回 422，此处未自定义错误消息，
-   * 返回的是 class-validator 默认提示。
+   * 请求以十进制字符串传输，转换后为 `bigint`；格式非法时返回 422。
    */
   @IsOptional()
-  @Matches(/^(0|[1-9]\d*)$/)
-  operUserId?: string;
+  @BigIntId()
+  operUserId?: bigint;
 
   /**
    * 操作状态：0 成功、1 失败

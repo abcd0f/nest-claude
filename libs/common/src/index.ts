@@ -1,4 +1,5 @@
 export * from './adapters/fastify.adapter.js';
+export * from './decorators/bigint-id.decorator.js';
 export * from './dto/base.dto.js';
 export * from './dto/dto-transformer.js';
 export * from './dto/list-query.dto.js';

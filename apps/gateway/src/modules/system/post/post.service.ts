@@ -1,12 +1,4 @@
-import {
-  andWhere,
-  makePageMeta,
-  PageResponseDto,
-  paginate,
-  parseId,
-  toDto,
-  toPageDto,
-} from '@app/common';
+import { andWhere, makePageMeta, PageResponseDto, paginate, toDto, toPageDto } from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto.js';
@@ -29,13 +21,12 @@ export class PostService {
 
   /**
    * 获取职位详情
-   * @param postId 职位 ID（字符串）
+   * @param postId 职位 ID（bigint）
    * @returns 职位详情
    */
-  async getPostById(postId: string): Promise<PostResponseDto> {
-    const id = parseId(postId, 'postId');
+  async getPostById(postId: bigint): Promise<PostResponseDto> {
     const post = await this.prisma.post.findUnique({
-      where: { postId: id },
+      where: { postId },
     });
 
     if (!post) {
@@ -77,15 +68,13 @@ export class PostService {
 
   /**
    * 更新职位
-   * @param postId 职位 ID（字符串）
+   * @param postId 职位 ID（bigint）
    * @param dto 更新职位 DTO
    * @returns 更新后的职位
    */
-  async updatePost(postId: string, dto: UpdatePostDto): Promise<PostResponseDto> {
-    const id = parseId(postId, 'postId');
-
+  async updatePost(postId: bigint, dto: UpdatePostDto): Promise<PostResponseDto> {
     // 检查职位是否存在
-    const existing = await this.prisma.post.findUnique({ where: { postId: id } });
+    const existing = await this.prisma.post.findUnique({ where: { postId } });
     if (!existing) {
       throw new NotFoundException(`职位 ${postId} 不存在`);
     }
@@ -101,7 +90,7 @@ export class PostService {
     }
 
     const post = await this.prisma.post.update({
-      where: { postId: id },
+      where: { postId },
       data: {
         ...(dto.postCode && { postCode: dto.postCode }),
         ...(dto.postName && { postName: dto.postName }),
@@ -119,15 +108,13 @@ export class PostService {
 
   /**
    * 删除职位
-   * @param postId 职位 ID（字符串）
+   * @param postId 职位 ID（bigint）
    */
-  async deletePost(postId: string): Promise<void> {
-    const id = parseId(postId, 'postId');
-
+  async deletePost(postId: bigint): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         const post = await tx.post.findUnique({
-          where: { postId: id },
+          where: { postId },
           include: {
             users: true,
           },
@@ -143,7 +130,7 @@ export class PostService {
         }
 
         // 删除职位
-        await tx.post.delete({ where: { postId: id } });
+        await tx.post.delete({ where: { postId } });
 
         this.logger.log(`Deleted post ${postId}`);
       },

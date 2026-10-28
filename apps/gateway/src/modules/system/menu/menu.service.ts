@@ -1,7 +1,6 @@
 import type { MenuModel } from '@app/database/generated/prisma/models/Menu.js';
 import type { MenuRouteMetaDto } from './dto/menu-route.dto.js';
 import { toDto, toDtoList } from '@app/common/dto/dto-transformer.js';
-import { parseId } from '@app/common/utils/bigint.util.js';
 import { andWhere } from '@app/common/utils/where.util.js';
 import { PrismaService } from '@app/database';
 import { isSuperAdmin } from '@app/permission';
@@ -78,9 +77,9 @@ export class MenuService {
       dto.menuName ? { menuName: { contains: dto.menuName } } : null,
       dto.status ? { status: dto.status } : null,
       dto.visible ? { visible: dto.visible } : null,
-      dto.parentId === undefined || dto.parentId === ''
+      dto.parentId === undefined
         ? null
-        : { parentId: parseId(dto.parentId, 'parentId') },
+        : { parentId: dto.parentId },
     );
 
     const menus = await this.prisma.menu.findMany({
@@ -297,13 +296,12 @@ export class MenuService {
 
   /**
    * 获取菜单详情
-   * @param menuId 菜单 ID（字符串）
+   * @param menuId 菜单 ID（bigint）
    * @returns 菜单详情
    */
-  async getMenuById(menuId: string): Promise<MenuResponseDto> {
-    const id = parseId(menuId, 'menuId');
+  async getMenuById(menuId: bigint): Promise<MenuResponseDto> {
     const menu = await this.prisma.menu.findUnique({
-      where: { menuId: id },
+      where: { menuId },
     });
 
     if (!menu) {
@@ -319,7 +317,7 @@ export class MenuService {
    * @returns 创建的菜单
    */
   async createMenu(dto: CreateMenuDto): Promise<MenuResponseDto> {
-    const parentId = parseId(dto.parentId, 'parentId');
+    const parentId = dto.parentId;
 
     // 校验菜单类型与字段匹配
     this.validateMenuTypeFields(dto);
@@ -364,27 +362,26 @@ export class MenuService {
 
   /**
    * 更新菜单
-   * @param menuId 菜单 ID（字符串）
+   * @param menuId 菜单 ID（bigint）
    * @param dto 更新菜单 DTO
    * @returns 更新后的菜单
    */
-  async updateMenu(menuId: string, dto: UpdateMenuDto): Promise<MenuResponseDto> {
-    const id = parseId(menuId, 'menuId');
-    const parentId = parseId(dto.parentId, 'parentId');
+  async updateMenu(menuId: bigint, dto: UpdateMenuDto): Promise<MenuResponseDto> {
+    const parentId = dto.parentId;
 
     // 校验菜单类型与字段匹配
     this.validateMenuTypeFields(dto);
 
     // 校验父菜单存在且不形成环
     if (parentId !== 0n) {
-      await this.checkParentValid(parentId, id);
+      await this.checkParentValid(parentId, menuId);
     }
 
     return await this.prisma.$transaction(
       async (tx) => {
         // 检查菜单是否存在
         const existing = await tx.menu.findUnique({
-          where: { menuId: id },
+          where: { menuId },
         });
 
         if (!existing) {
@@ -393,7 +390,7 @@ export class MenuService {
 
         // 更新菜单
         const menu = await tx.menu.update({
-          where: { menuId: id },
+          where: { menuId },
           data: {
             parentId,
             menuName: dto.menuName,
@@ -426,16 +423,14 @@ export class MenuService {
 
   /**
    * 删除菜单
-   * @param menuId 菜单 ID（字符串）
+   * @param menuId 菜单 ID（bigint）
    */
-  async deleteMenu(menuId: string): Promise<void> {
-    const id = parseId(menuId, 'menuId');
-
+  async deleteMenu(menuId: bigint): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         // 检查菜单是否存在
         const menu = await tx.menu.findUnique({
-          where: { menuId: id },
+          where: { menuId },
           include: {
             permission: {
               include: {
@@ -451,7 +446,7 @@ export class MenuService {
 
         // 检查是否有子菜单
         const childCount = await tx.menu.count({
-          where: { parentId: id },
+          where: { parentId: menuId },
         });
 
         if (childCount > 0) {
@@ -474,7 +469,7 @@ export class MenuService {
 
         // 删除菜单
         await tx.menu.delete({
-          where: { menuId: id },
+          where: { menuId },
         });
 
         this.logger.log(`Deleted menu ${menuId}`);
@@ -485,12 +480,10 @@ export class MenuService {
 
   /**
    * 获取角色的菜单树
-   * @param roleId 角色 ID（字符串）
+   * @param roleId 角色 ID（bigint）
    * @returns 角色菜单树和已选中的菜单 ID
    */
-  async getRoleMenuTree(roleId: string): Promise<RoleMenuTreeDto> {
-    const id = parseId(roleId, 'roleId');
-
+  async getRoleMenuTree(roleId: bigint): Promise<RoleMenuTreeDto> {
     // 获取所有启用的菜单
     const allMenus = await this.prisma.menu.findMany({
       where: {
@@ -501,7 +494,7 @@ export class MenuService {
 
     // 获取角色已分配的菜单 ID
     const roleMenus = await this.prisma.roleMenu.findMany({
-      where: { roleId: id },
+      where: { roleId },
       select: { menuId: true },
     });
 
@@ -518,20 +511,17 @@ export class MenuService {
    * 分配菜单给角色
    * 同时同步 RoleMenu 和 RolePermission
    *
-   * @param roleId 角色 ID（字符串）
-   * @param menuIds 菜单 ID 列表（字符串数组）
+   * @param roleId 角色 ID（bigint）
+   * @param menuIds 菜单 ID 列表（bigint 数组）
    */
-  async assignMenusToRole(roleId: string, menuIds: string[]): Promise<void> {
-    const id = parseId(roleId, 'roleId');
-    const ids = menuIds.map((mid) => parseId(mid, 'menuId'));
-
+  async assignMenusToRole(roleId: bigint, menuIds: bigint[]): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         // 1. 清除原有关联
-        await tx.roleMenu.deleteMany({ where: { roleId: id } });
-        await tx.rolePermission.deleteMany({ where: { roleId: id } });
+        await tx.roleMenu.deleteMany({ where: { roleId } });
+        await tx.rolePermission.deleteMany({ where: { roleId } });
 
-        if (ids.length === 0) {
+        if (menuIds.length === 0) {
           this.logger.log(`Cleared all menus for role ${roleId}`);
           return;
         }
@@ -539,7 +529,7 @@ export class MenuService {
         // 2. 批量查询菜单
         const menus = await tx.menu.findMany({
           where: {
-            menuId: { in: ids },
+            menuId: { in: menuIds },
             status: '0',
           },
           include: {
@@ -549,20 +539,20 @@ export class MenuService {
           },
         });
 
-        if (menus.length !== ids.length) {
+        if (menus.length !== menuIds.length) {
           throw new BadRequestException('部分菜单不存在或已停用');
         }
 
         // 3. 创建 RoleMenu
         await tx.roleMenu.createMany({
-          data: menus.map((m) => ({ roleId: id, menuId: m.menuId })),
+          data: menus.map((m) => ({ roleId, menuId: m.menuId })),
           skipDuplicates: true,
         });
 
         // 4. 创建 RolePermission（仅 C/F 且有权限且权限启用的菜单）
         const permissions = menus
           .filter((m) => m.permission && m.permission.status === '0')
-          .map((m) => ({ roleId: id, permissionId: m.permission!.permissionId }));
+          .map((m) => ({ roleId, permissionId: m.permission!.permissionId }));
 
         if (permissions.length > 0) {
           await tx.rolePermission.createMany({

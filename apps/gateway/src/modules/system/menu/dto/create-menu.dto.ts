@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { BigIntId } from '@app/common';
+import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 /**
  * 创建菜单 DTO
@@ -13,9 +14,8 @@ export class CreateMenuDto {
    * 十进制字符串，根节点固定为 `"0"`。
    * @example "0"
    */
-  @IsString()
-  @Matches(/^(0|[1-9]\d*)$/, { message: 'parentId 必须是十进制字符串' })
-  parentId!: string;
+  @BigIntId()
+  parentId!: bigint;
 
   /**
    * 菜单名称

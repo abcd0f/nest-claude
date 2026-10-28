@@ -1,12 +1,4 @@
-import {
-  andWhere,
-  makePageMeta,
-  PageResponseDto,
-  paginate,
-  parseId,
-  toDto,
-  toPageDto,
-} from '@app/common';
+import { andWhere, makePageMeta, PageResponseDto, paginate, toDto, toPageDto } from '@app/common';
 import { PrismaService } from '@app/database';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { MenuService } from '../menu/menu.service.js';
@@ -35,13 +27,12 @@ export class RoleService {
 
   /**
    * 获取角色详情
-   * @param roleId 角色 ID（字符串）
+   * @param roleId 角色 ID（bigint）
    * @returns 角色详情
    */
-  async getRoleById(roleId: string): Promise<RoleResponseDto> {
-    const id = parseId(roleId, 'roleId');
+  async getRoleById(roleId: bigint): Promise<RoleResponseDto> {
     const role = await this.prisma.role.findUnique({
-      where: { roleId: id },
+      where: { roleId },
     });
 
     if (!role) {
@@ -84,15 +75,13 @@ export class RoleService {
 
   /**
    * 更新角色
-   * @param roleId 角色 ID（字符串）
+   * @param roleId 角色 ID（bigint）
    * @param dto 更新角色 DTO
    * @returns 更新后的角色
    */
-  async updateRole(roleId: string, dto: UpdateRoleDto): Promise<RoleResponseDto> {
-    const id = parseId(roleId, 'roleId');
-
+  async updateRole(roleId: bigint, dto: UpdateRoleDto): Promise<RoleResponseDto> {
     // 检查角色是否存在
-    const existing = await this.prisma.role.findUnique({ where: { roleId: id } });
+    const existing = await this.prisma.role.findUnique({ where: { roleId } });
     if (!existing) {
       throw new NotFoundException(`角色 ${roleId} 不存在`);
     }
@@ -108,7 +97,7 @@ export class RoleService {
     }
 
     const role = await this.prisma.role.update({
-      where: { roleId: id },
+      where: { roleId },
       data: {
         ...(dto.roleName && { roleName: dto.roleName }),
         ...(dto.roleKey && { roleKey: dto.roleKey }),
@@ -127,15 +116,13 @@ export class RoleService {
 
   /**
    * 删除角色
-   * @param roleId 角色 ID（字符串）
+   * @param roleId 角色 ID（bigint）
    */
-  async deleteRole(roleId: string): Promise<void> {
-    const id = parseId(roleId, 'roleId');
-
+  async deleteRole(roleId: bigint): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         const role = await tx.role.findUnique({
-          where: { roleId: id },
+          where: { roleId },
           include: {
             users: true,
           },
@@ -151,16 +138,16 @@ export class RoleService {
         }
 
         // 删除角色菜单关联
-        await tx.roleMenu.deleteMany({ where: { roleId: id } });
+        await tx.roleMenu.deleteMany({ where: { roleId } });
 
         // 删除角色权限关联
-        await tx.rolePermission.deleteMany({ where: { roleId: id } });
+        await tx.rolePermission.deleteMany({ where: { roleId } });
 
         // 删除角色部门关联
-        await tx.roleDept.deleteMany({ where: { roleId: id } });
+        await tx.roleDept.deleteMany({ where: { roleId } });
 
         // 删除角色
-        await tx.role.delete({ where: { roleId: id } });
+        await tx.role.delete({ where: { roleId } });
 
         this.logger.log(`Deleted role ${roleId}`);
       },
@@ -207,52 +194,49 @@ export class RoleService {
 
   /**
    * 分配菜单给角色（委托给 MenuService）
-   * @param roleId 角色 ID（字符串）
-   * @param menuIds 菜单 ID 列表（字符串数组）
+   * @param roleId 角色 ID（bigint）
+   * @param menuIds 菜单 ID 列表（bigint 数组）
    */
-  async assignMenus(roleId: string, menuIds: string[]): Promise<void> {
+  async assignMenus(roleId: bigint, menuIds: bigint[]): Promise<void> {
     return this.menuService.assignMenusToRole(roleId, menuIds);
   }
 
   /**
    * 分配部门给角色（数据范围自定义）
-   * @param roleId 角色 ID（字符串）
-   * @param deptIds 部门 ID 列表（字符串数组）
+   * @param roleId 角色 ID（bigint）
+   * @param deptIds 部门 ID 列表（bigint 数组）
    */
-  async assignDepts(roleId: string, deptIds: string[]): Promise<void> {
-    const id = parseId(roleId, 'roleId');
-    const ids = deptIds.map((did) => parseId(did, 'deptId'));
-
+  async assignDepts(roleId: bigint, deptIds: bigint[]): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         // 检查角色是否存在
-        const role = await tx.role.findUnique({ where: { roleId: id } });
+        const role = await tx.role.findUnique({ where: { roleId } });
         if (!role) {
           throw new NotFoundException(`角色 ${roleId} 不存在`);
         }
 
         // 验证部门存在
-        if (ids.length > 0) {
+        if (deptIds.length > 0) {
           const depts = await tx.dept.findMany({
-            where: { deptId: { in: ids } },
+            where: { deptId: { in: deptIds } },
           });
-          if (depts.length !== ids.length) {
+          if (depts.length !== deptIds.length) {
             throw new BadRequestException('部分部门不存在');
           }
         }
 
         // 清除原有关联
-        await tx.roleDept.deleteMany({ where: { roleId: id } });
+        await tx.roleDept.deleteMany({ where: { roleId } });
 
         // 创建新关联
-        if (ids.length > 0) {
+        if (deptIds.length > 0) {
           await tx.roleDept.createMany({
-            data: ids.map((deptId) => ({ roleId: id, deptId })),
+            data: deptIds.map((deptId) => ({ roleId, deptId })),
             skipDuplicates: true,
           });
         }
 
-        this.logger.log(`Assigned ${ids.length} depts to role ${roleId}`);
+        this.logger.log(`Assigned ${deptIds.length} depts to role ${roleId}`);
       },
       { timeout: 10_000 },
     );

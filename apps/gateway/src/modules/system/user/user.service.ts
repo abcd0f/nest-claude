@@ -3,7 +3,6 @@ import {
   makePageMeta,
   PageResponseDto,
   paginate,
-  parseId,
   toDto,
   toPageDto,
 } from '@app/common';
@@ -31,13 +30,12 @@ export class UserService {
 
   /**
    * 获取用户详情
-   * @param userId 用户 ID（字符串）
+   * @param userId 用户 ID（bigint）
    * @returns 用户详情
    */
-  async getUserById(userId: string): Promise<UserResponseDto> {
-    const id = parseId(userId, 'userId');
+  async getUserById(userId: bigint): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({
-      where: { userId: id },
+      where: { userId },
     });
 
     if (!user) {
@@ -52,12 +50,10 @@ export class UserService {
    *
    * 用于前端「分配角色 / 分配岗位」弹窗回显。
    */
-  async getUserRoles(userId: string): Promise<{ postIds: string[]; roleIds: string[] }> {
-    const id = parseId(userId, 'userId');
-
+  async getUserRoles(userId: bigint): Promise<{ postIds: string[]; roleIds: string[] }> {
     const [roles, posts] = await Promise.all([
-      this.prisma.userRole.findMany({ where: { userId: id }, select: { roleId: true } }),
-      this.prisma.userPost.findMany({ where: { userId: id }, select: { postId: true } }),
+      this.prisma.userRole.findMany({ where: { userId }, select: { roleId: true } }),
+      this.prisma.userPost.findMany({ where: { userId }, select: { postId: true } }),
     ]);
 
     return {
@@ -72,9 +68,9 @@ export class UserService {
    * @returns 创建的用户
    */
   async createUser(dto: CreateUserDto): Promise<UserResponseDto> {
-    const deptId = dto.deptId ? parseId(dto.deptId, 'deptId') : null;
-    const roleIds = dto.roleIds?.map((rid) => parseId(rid, 'roleId')) || [];
-    const postIds = dto.postIds?.map((pid) => parseId(pid, 'postId')) || [];
+    const deptId = dto.deptId ?? null;
+    const roleIds = dto.roleIds ?? [];
+    const postIds = dto.postIds ?? [];
 
     return await this.prisma.$transaction(
       async (tx) => {
@@ -88,8 +84,8 @@ export class UserService {
         }
 
         // 验证部门存在
-        if (deptId) {
-          const dept = await tx.dept.findUnique({ where: { deptId } });
+        if (dto.deptId) {
+          const dept = await tx.dept.findUnique({ where: { deptId: dto.deptId } });
           if (!dept) {
             throw new BadRequestException(`部门 ${dto.deptId} 不存在`);
           }
@@ -156,27 +152,25 @@ export class UserService {
 
   /**
    * 更新用户
-   * @param userId 用户 ID（字符串）
+   * @param userId 用户 ID（bigint）
    * @param dto 更新用户 DTO
    * @returns 更新后的用户
    */
-  async updateUser(userId: string, dto: UpdateUserDto): Promise<UserResponseDto> {
-    const id = parseId(userId, 'userId');
-    const deptId = dto.deptId ? parseId(dto.deptId, 'deptId') : undefined;
-    const roleIds = dto.roleIds?.map((rid) => parseId(rid, 'roleId'));
-    const postIds = dto.postIds?.map((pid) => parseId(pid, 'postId'));
+  async updateUser(userId: bigint, dto: UpdateUserDto): Promise<UserResponseDto> {
+    const roleIds = dto.roleIds;
+    const postIds = dto.postIds;
 
     return await this.prisma.$transaction(
       async (tx) => {
         // 检查用户是否存在
-        const existing = await tx.user.findUnique({ where: { userId: id } });
+        const existing = await tx.user.findUnique({ where: { userId } });
         if (!existing) {
           throw new NotFoundException(`用户 ${userId} 不存在`);
         }
 
         // 验证部门存在
-        if (deptId) {
-          const dept = await tx.dept.findUnique({ where: { deptId } });
+        if (dto.deptId) {
+          const dept = await tx.dept.findUnique({ where: { deptId: dto.deptId } });
           if (!dept) {
             throw new BadRequestException(`部门 ${dto.deptId} 不存在`);
           }
@@ -204,14 +198,14 @@ export class UserService {
 
         // 更新用户
         const user = await tx.user.update({
-          where: { userId: id },
+          where: { userId },
           data: {
             ...(dto.nickName && { nickName: dto.nickName }),
             ...(dto.email !== undefined && { email: dto.email }),
             ...(dto.phoneNumber !== undefined && { phoneNumber: dto.phoneNumber }),
             ...(dto.sex && { sex: dto.sex }),
             ...(dto.status && { status: dto.status }),
-            ...(deptId !== undefined && { deptId }),
+            ...(dto.deptId !== undefined && { deptId: dto.deptId }),
             updateTime: new Date(),
             remark: dto.remark,
           },
@@ -219,10 +213,10 @@ export class UserService {
 
         // 更新角色关联
         if (roleIds !== undefined) {
-          await tx.userRole.deleteMany({ where: { userId: id } });
+          await tx.userRole.deleteMany({ where: { userId } });
           if (roleIds.length > 0) {
             await tx.userRole.createMany({
-              data: roleIds.map((roleId) => ({ userId: id, roleId })),
+              data: roleIds.map((roleId) => ({ userId, roleId })),
               skipDuplicates: true,
             });
           }
@@ -230,10 +224,10 @@ export class UserService {
 
         // 更新职位关联
         if (postIds !== undefined) {
-          await tx.userPost.deleteMany({ where: { userId: id } });
+          await tx.userPost.deleteMany({ where: { userId } });
           if (postIds.length > 0) {
             await tx.userPost.createMany({
-              data: postIds.map((postId) => ({ userId: id, postId })),
+              data: postIds.map((postId) => ({ userId, postId })),
               skipDuplicates: true,
             });
           }
@@ -249,27 +243,25 @@ export class UserService {
 
   /**
    * 删除用户
-   * @param userId 用户 ID（字符串）
+   * @param userId 用户 ID（bigint）
    */
-  async deleteUser(userId: string): Promise<void> {
-    const id = parseId(userId, 'userId');
-
+  async deleteUser(userId: bigint): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
-        const user = await tx.user.findUnique({ where: { userId: id } });
+        const user = await tx.user.findUnique({ where: { userId } });
 
         if (!user) {
           throw new NotFoundException(`用户 ${userId} 不存在`);
         }
 
         // 删除用户角色关联
-        await tx.userRole.deleteMany({ where: { userId: id } });
+        await tx.userRole.deleteMany({ where: { userId } });
 
         // 删除用户职位关联
-        await tx.userPost.deleteMany({ where: { userId: id } });
+        await tx.userPost.deleteMany({ where: { userId } });
 
         // 删除用户
-        await tx.user.delete({ where: { userId: id } });
+        await tx.user.delete({ where: { userId } });
 
         this.logger.log(`Deleted user ${userId}`);
       },
@@ -288,10 +280,8 @@ export class UserService {
       pageSize: dto.pageSize,
     });
 
-    const deptId = dto.deptId ? parseId(dto.deptId, 'deptId') : undefined;
-
     const where = andWhere(
-      deptId ? { deptId } : null,
+      dto.deptId ? { deptId: dto.deptId } : null,
       dto.status ? { status: dto.status } : null,
       dto.search
         ? {
@@ -319,43 +309,40 @@ export class UserService {
 
   /**
    * 分配角色给用户
-   * @param userId 用户 ID（字符串）
-   * @param roleIds 角色 ID 列表（字符串数组）
+   * @param userId 用户 ID（bigint）
+   * @param roleIds 角色 ID 列表（bigint 数组）
    */
-  async assignRoles(userId: string, roleIds: string[]): Promise<void> {
-    const id = parseId(userId, 'userId');
-    const ids = roleIds.map((rid) => parseId(rid, 'roleId'));
-
+  async assignRoles(userId: bigint, roleIds: bigint[]): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         // 检查用户是否存在
-        const user = await tx.user.findUnique({ where: { userId: id } });
+        const user = await tx.user.findUnique({ where: { userId } });
         if (!user) {
           throw new NotFoundException(`用户 ${userId} 不存在`);
         }
 
         // 验证角色存在
-        if (ids.length > 0) {
+        if (roleIds.length > 0) {
           const roles = await tx.role.findMany({
-            where: { roleId: { in: ids } },
+            where: { roleId: { in: roleIds } },
           });
-          if (roles.length !== ids.length) {
+          if (roles.length !== roleIds.length) {
             throw new BadRequestException('部分角色不存在');
           }
         }
 
         // 清除原有关联
-        await tx.userRole.deleteMany({ where: { userId: id } });
+        await tx.userRole.deleteMany({ where: { userId } });
 
         // 创建新关联
-        if (ids.length > 0) {
+        if (roleIds.length > 0) {
           await tx.userRole.createMany({
-            data: ids.map((roleId) => ({ userId: id, roleId })),
+            data: roleIds.map((roleId) => ({ userId, roleId })),
             skipDuplicates: true,
           });
         }
 
-        this.logger.log(`Assigned ${ids.length} roles to user ${userId}`);
+        this.logger.log(`Assigned ${roleIds.length} roles to user ${userId}`);
       },
       { timeout: 10_000 },
     );
@@ -363,43 +350,40 @@ export class UserService {
 
   /**
    * 分配职位给用户
-   * @param userId 用户 ID（字符串）
-   * @param postIds 职位 ID 列表（字符串数组）
+   * @param userId 用户 ID（bigint）
+   * @param postIds 职位 ID 列表（bigint 数组）
    */
-  async assignPosts(userId: string, postIds: string[]): Promise<void> {
-    const id = parseId(userId, 'userId');
-    const ids = postIds.map((pid) => parseId(pid, 'postId'));
-
+  async assignPosts(userId: bigint, postIds: bigint[]): Promise<void> {
     await this.prisma.$transaction(
       async (tx) => {
         // 检查用户是否存在
-        const user = await tx.user.findUnique({ where: { userId: id } });
+        const user = await tx.user.findUnique({ where: { userId } });
         if (!user) {
           throw new NotFoundException(`用户 ${userId} 不存在`);
         }
 
         // 验证职位存在
-        if (ids.length > 0) {
+        if (postIds.length > 0) {
           const posts = await tx.post.findMany({
-            where: { postId: { in: ids } },
+            where: { postId: { in: postIds } },
           });
-          if (posts.length !== ids.length) {
+          if (posts.length !== postIds.length) {
             throw new BadRequestException('部分职位不存在');
           }
         }
 
         // 清除原有关联
-        await tx.userPost.deleteMany({ where: { userId: id } });
+        await tx.userPost.deleteMany({ where: { userId } });
 
         // 创建新关联
-        if (ids.length > 0) {
+        if (postIds.length > 0) {
           await tx.userPost.createMany({
-            data: ids.map((postId) => ({ userId: id, postId })),
+            data: postIds.map((postId) => ({ userId, postId })),
             skipDuplicates: true,
           });
         }
 
-        this.logger.log(`Assigned ${ids.length} posts to user ${userId}`);
+        this.logger.log(`Assigned ${postIds.length} posts to user ${userId}`);
       },
       { timeout: 10_000 },
     );
@@ -407,19 +391,17 @@ export class UserService {
 
   /**
    * 重置用户密码
-   * @param userId 用户 ID（字符串）
+   * @param userId 用户 ID（bigint）
    * @param newPassword 新密码
    */
-  async resetPassword(userId: string, newPassword: string): Promise<void> {
-    const id = parseId(userId, 'userId');
-
-    const user = await this.prisma.user.findUnique({ where: { userId: id } });
+  async resetPassword(userId: bigint, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { userId } });
     if (!user) {
       throw new NotFoundException(`用户 ${userId} 不存在`);
     }
 
     await this.prisma.user.update({
-      where: { userId: id },
+      where: { userId },
       data: {
         password: newPassword, // 实际应使用 bcrypt 加密
         updateTime: new Date(),

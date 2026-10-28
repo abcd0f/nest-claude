@@ -1,4 +1,5 @@
-import { IsArray, IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
+import { BigIntId } from '@app/common';
+import { IsArray, IsBoolean, IsOptional } from 'class-validator';
 
 /**
  * 分配菜单给角色 DTO
@@ -15,9 +16,8 @@ export class AssignMenusToRoleDto {
    * @example ["1","100","1001"]
    */
   @IsArray()
-  @IsString({ each: true })
-  @Matches(/^(0|[1-9]\d*)$/, { each: true, message: '每个 menuId 必须是十进制字符串' })
-  menuIds!: string[];
+  @BigIntId({ each: true })
+  menuIds!: bigint[];
 
   /**
    * 父子节点是否联动

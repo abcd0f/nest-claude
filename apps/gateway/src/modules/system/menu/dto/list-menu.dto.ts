@@ -1,3 +1,4 @@
+import { BigIntId } from '@app/common';
 import { Transform } from 'class-transformer';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 
@@ -44,6 +45,6 @@ export class ListMenuDto {
    * @example "1"
    */
   @IsOptional()
-  @IsString()
-  parentId?: string;
+  @BigIntId()
+  parentId?: bigint;
 }
