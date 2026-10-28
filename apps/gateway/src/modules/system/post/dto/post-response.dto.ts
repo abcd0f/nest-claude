@@ -28,9 +28,9 @@ export class PostResponseDto {
   @Expose()
   postName!: string;
 
-  /** 所属部门 ID 列表（十进制字符串）。 */
+  /** 所属部门 ID（十进制字符串）；未分配时为 null。 */
   @Expose()
-  deptIds!: string[];
+  deptId!: string | null;
 
   /**
    * 显示顺序

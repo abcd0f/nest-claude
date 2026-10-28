@@ -9,7 +9,7 @@
 --   psql -h 127.0.0.1 -U <user> -d <db> -f prisma/seed.sql
 --   或在容器内：docker exec -i <pg容器> psql -U <user> -d <db> < prisma/seed.sql
 --
--- 幂等：所有 INSERT 都带 ON CONFLICT DO NOTHING，可重复执行不会报主键冲突。
+-- 幂等：重复运行不会插入重复行；岗位示例数据会同步所属部门。
 --       末尾会修正自增序列，保证后续通过接口新增的数据 ID 不撞车。
 --
 -- 默认账号：admin / admin123（上线前必须改密码）
@@ -38,12 +38,13 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 -- 2. 职位
 -- ============================================================================
-INSERT INTO "sys_post" ("post_id", "post_code", "post_name", "order_num", "status", "del_flag", "remark")
+INSERT INTO "sys_post" ("post_id", "dept_id", "post_code", "post_name", "order_num", "status", "del_flag", "remark")
 VALUES
-  (1, 'ceo', '董事长',   1, '0', '0', NULL),
-  (2, 'se',  '项目经理', 2, '0', '0', NULL),
-  (3, 'hr',  '人力资源', 3, '0', '0', NULL)
-ON CONFLICT DO NOTHING;
+  (1, 1, 'ceo', '董事长',   1, '0', '0', NULL),
+  (2, 2, 'se',  '项目经理', 2, '0', '0', NULL),
+  (3, 1, 'hr',  '人力资源', 3, '0', '0', NULL)
+ON CONFLICT ("post_id") DO UPDATE
+SET "dept_id" = EXCLUDED."dept_id";
 
 -- ============================================================================
 -- 3. 角色
@@ -283,4 +284,10 @@ COMMIT;
 --
 -- 4) 登录后调用 GET /system/permission/references，
 --    missing 应为空数组；非空说明代码里引用了未初始化的权限编码。
+--
+-- 5) 示例岗位应关联到有效部门（应返回 0 行）：
+--    SELECT p.post_code
+--    FROM "sys_post" p
+--    LEFT JOIN "sys_dept" d ON d.dept_id = p.dept_id
+--    WHERE p.post_id IN (1, 2, 3) AND d.dept_id IS NULL;
 -- ============================================================================

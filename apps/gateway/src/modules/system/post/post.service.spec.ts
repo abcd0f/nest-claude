@@ -7,6 +7,7 @@ const postRow = {
   postId: 1n,
   postCode: 'dev',
   postName: '开发工程师',
+  deptId: 2n,
   orderNum: 1,
   status: '0',
   delFlag: '0',
@@ -16,16 +17,12 @@ const postRow = {
 };
 
 const transaction = {
-  dept: { findMany: vi.fn() },
+  dept: { findFirst: vi.fn() },
   post: {
+    create: vi.fn(),
     findFirst: vi.fn(),
     findUnique: vi.fn(),
-    findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
-  },
-  postDept: {
-    createMany: vi.fn(),
-    deleteMany: vi.fn(),
   },
 };
 
@@ -35,6 +32,7 @@ const prismaMock = {
   ),
   post: {
     count: vi.fn(),
+    findFirst: vi.fn(),
     findMany: vi.fn(),
   },
 };
@@ -45,52 +43,64 @@ const service = new PostService(prisma);
 describe('post service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    prismaMock.post.findMany.mockResolvedValue([{ ...postRow, deptPosts: [{ deptId: 2n }] }]);
+    prismaMock.post.findMany.mockResolvedValue([postRow]);
     prismaMock.post.count.mockResolvedValue(1);
+    prismaMock.post.findFirst.mockResolvedValue(null);
     transaction.post.findUnique.mockResolvedValue(postRow);
     transaction.post.findFirst.mockResolvedValue(null);
-    transaction.dept.findMany.mockResolvedValue([{ deptId: 2n }, { deptId: 3n }]);
+    transaction.dept.findFirst.mockResolvedValue({ deptId: 2n });
+    transaction.post.create.mockResolvedValue(postRow);
     transaction.post.update.mockResolvedValue(postRow);
-    transaction.post.findUniqueOrThrow.mockResolvedValue({
-      ...postRow,
-      deptPosts: [{ deptId: 2n }, { deptId: 3n }],
-    });
   });
 
-  it('filters by the selected department and returns its department IDs', async () => {
+  it('filters by the selected department and returns its department ID', async () => {
     const result = await service.listPosts({ deptId: 2n, page: 1, pageSize: 10 });
 
     const query = vi.mocked(prisma.post.findMany).mock.calls[0]?.[0];
     expect(query?.where).toEqual(
       expect.objectContaining({
-        AND: expect.arrayContaining([{ deptPosts: { some: { deptId: 2n } } }]),
+        AND: expect.arrayContaining([{ deptId: 2n }]),
       }),
     );
-    expect(result.items[0]?.deptIds).toEqual(['2']);
+    expect(result.items[0]?.deptId).toBe('2');
   });
 
-  it('replaces department assignments in the same transaction as the post update', async () => {
-    const result = await service.updatePost(1n, { deptIds: [2n, 3n] });
+  it('creates a post with one department', async () => {
+    const result = await service.createPost({
+      postCode: 'dev',
+      postName: '开发工程师',
+      deptId: 2n,
+    });
 
-    expect(transaction.postDept.deleteMany).toHaveBeenCalledWith({
+    expect(transaction.post.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ deptId: 2n }),
+    });
+    expect(result.deptId).toBe('2');
+  });
+
+  it('updates and clears a post department with a single ID', async () => {
+    transaction.dept.findFirst.mockResolvedValueOnce({ deptId: 3n });
+    transaction.post.update.mockResolvedValueOnce({ ...postRow, deptId: 3n });
+
+    const updated = await service.updatePost(1n, { deptId: 3n });
+
+    expect(transaction.post.update).toHaveBeenCalledWith({
       where: { postId: 1n },
+      data: expect.objectContaining({ deptId: 3n }),
     });
-    expect(transaction.postDept.createMany).toHaveBeenCalledWith({
-      data: [
-        { postId: 1n, deptId: 2n },
-        { postId: 1n, deptId: 3n },
-      ],
-    });
-    expect(result.deptIds).toEqual(['2', '3']);
+    expect(updated.deptId).toBe('3');
+
+    transaction.post.update.mockResolvedValueOnce({ ...postRow, deptId: null });
+    const cleared = await service.updatePost(1n, { deptId: null });
+    expect(cleared.deptId).toBeNull();
   });
 
   it('rejects unknown departments without changing the post', async () => {
-    transaction.dept.findMany.mockResolvedValue([]);
+    transaction.dept.findFirst.mockResolvedValue(null);
 
-    await expect(service.updatePost(1n, { deptIds: [99n] })).rejects.toBeInstanceOf(
+    await expect(service.updatePost(1n, { deptId: 99n })).rejects.toBeInstanceOf(
       BadRequestException,
     );
     expect(transaction.post.update).not.toHaveBeenCalled();
-    expect(transaction.postDept.deleteMany).not.toHaveBeenCalled();
   });
 });

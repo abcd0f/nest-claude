@@ -6,6 +6,8 @@ model Post {
   postCode   String   @map("post_code") @db.VarChar(64)
   /// 职位名称
   postName   String   @map("post_name") @db.VarChar(64)
+  /// 所属部门ID
+  deptId     BigInt?  @map("dept_id")
   /// 显示顺序
   orderNum   Int      @default(0) @map("order_num")
   /// 职位状态
@@ -19,8 +21,9 @@ model Post {
   /// 备注
   remark     String?  @db.VarChar(500)
 
-  users     UserPost[]
-  deptPosts PostDept[]
+  users UserPost[]
+  dept  Dept?       @relation(fields: [deptId], references: [deptId], onDelete: SetNull)
 
+  @@index([deptId])
   @@map("sys_post")
 }

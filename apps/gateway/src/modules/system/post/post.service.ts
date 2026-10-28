@@ -6,10 +6,6 @@ import { ListPostDto } from './dto/list-post.dto.js';
 import { PostResponseDto } from './dto/post-response.dto.js';
 import { UpdatePostDto } from './dto/update-post.dto.js';
 
-const postWithDeptIds = {
-  deptPosts: { select: { deptId: true } },
-} as const;
-
 /**
  * 职位服务
  *
@@ -31,7 +27,6 @@ export class PostService {
   async getPostById(postId: bigint): Promise<PostResponseDto> {
     const post = await this.prisma.post.findUnique({
       where: { postId },
-      include: postWithDeptIds,
     });
 
     if (!post) {
@@ -56,30 +51,20 @@ export class PostService {
       throw new BadRequestException(`职位编码 ${dto.postCode} 已存在`);
     }
 
-    const deptIds = this.uniqueDeptIds(dto.deptIds ?? []);
+    const deptId = dto.deptId ?? null;
 
     return this.prisma.$transaction(async (tx) => {
-      await this.assertDeptIdsExist(deptIds, tx);
+      await this.assertDeptExists(deptId, tx);
 
-      const post = await tx.post.create({
+      const created = await tx.post.create({
         data: {
           postCode: dto.postCode,
           postName: dto.postName,
+          deptId,
           orderNum: dto.orderNum ?? 0,
           status: dto.status ?? '0',
           remark: dto.remark,
         },
-      });
-
-      if (deptIds.length > 0) {
-        await tx.postDept.createMany({
-          data: deptIds.map((deptId) => ({ postId: post.postId, deptId })),
-        });
-      }
-
-      const created = await tx.post.findUniqueOrThrow({
-        where: { postId: post.postId },
-        include: postWithDeptIds,
       });
 
       this.logger.log(`Created post ${created.postId}: ${created.postName}`);
@@ -110,34 +95,20 @@ export class PostService {
         }
       }
 
-      const deptIds = dto.deptIds === undefined ? undefined : this.uniqueDeptIds(dto.deptIds);
-      if (deptIds !== undefined) {
-        await this.assertDeptIdsExist(deptIds, tx);
+      if (dto.deptId !== undefined) {
+        await this.assertDeptExists(dto.deptId, tx);
       }
 
-      const post = await tx.post.update({
+      const updated = await tx.post.update({
         where: { postId },
         data: {
           ...(dto.postCode && { postCode: dto.postCode }),
           ...(dto.postName && { postName: dto.postName }),
+          ...(dto.deptId !== undefined ? { deptId: dto.deptId } : {}),
           ...(dto.orderNum !== undefined && { orderNum: dto.orderNum }),
           ...(dto.status && { status: dto.status }),
           remark: dto.remark,
         },
-      });
-
-      if (deptIds !== undefined) {
-        await tx.postDept.deleteMany({ where: { postId } });
-        if (deptIds.length > 0) {
-          await tx.postDept.createMany({
-            data: deptIds.map((deptId) => ({ postId, deptId })),
-          });
-        }
-      }
-
-      const updated = await tx.post.findUniqueOrThrow({
-        where: { postId: post.postId },
-        include: postWithDeptIds,
       });
 
       this.logger.log(`Updated post ${updated.postId}: ${updated.postName}`);
@@ -196,14 +167,13 @@ export class PostService {
             OR: [{ postCode: { contains: dto.search } }, { postName: { contains: dto.search } }],
           }
         : null,
-      dto.deptId !== undefined ? { deptPosts: { some: { deptId: dto.deptId } } } : null,
+      dto.deptId !== undefined ? { deptId: dto.deptId } : null,
       { delFlag: '0' },
     );
 
     const [items, total] = await Promise.all([
       this.prisma.post.findMany({
         where,
-        include: postWithDeptIds,
         skip,
         take,
         orderBy: { orderNum: 'asc' },
@@ -217,25 +187,21 @@ export class PostService {
     };
   }
 
-  private toPostResponse<T extends { deptPosts: { deptId: bigint }[] }>(post: T) {
+  private toPostResponse<T extends { deptId: bigint | null }>(post: T) {
     const response = toDto(PostResponseDto, post);
-    response.deptIds = post.deptPosts.map(({ deptId }) => deptId.toString());
+    response.deptId = post.deptId?.toString() ?? null;
     return response;
   }
 
-  private uniqueDeptIds(deptIds: bigint[]): bigint[] {
-    return [...new Set(deptIds)];
-  }
+  private async assertDeptExists(deptId: bigint | null, tx: Prisma.TransactionClient) {
+    if (deptId === null) return;
 
-  private async assertDeptIdsExist(deptIds: bigint[], tx: Prisma.TransactionClient) {
-    if (deptIds.length === 0) return;
-
-    const depts = await tx.dept.findMany({
-      where: { deptId: { in: deptIds }, delFlag: '0' },
+    const dept = await tx.dept.findFirst({
+      where: { deptId, delFlag: '0' },
       select: { deptId: true },
     });
-    if (depts.length !== deptIds.length) {
-      throw new BadRequestException('部分部门不存在');
+    if (!dept) {
+      throw new BadRequestException(`部门 ${deptId} 不存在`);
     }
   }
 }

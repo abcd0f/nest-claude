@@ -111,6 +111,22 @@ export class DeptService {
           throw new NotFoundException(`部门 ${deptId} 不存在`);
         }
 
+        // 禁用部门前，必须先确认其所有后代部门都已停用。
+        if (dto.status === '1' && existing.status !== '1') {
+          const enabledChild = await tx.dept.findFirst({
+            where: {
+              ancestors: { contains: `/${deptId.toString()}/` },
+              status: '0',
+              delFlag: '0',
+            },
+            select: { deptId: true },
+          });
+
+          if (enabledChild) {
+            throw new BadRequestException('该部门包含未停用的子部门!');
+          }
+        }
+
         // 如果更改父部门，检查合法性
         let ancestors = existing.ancestors;
         if (parentId !== undefined && parentId !== existing.parentId) {
@@ -148,7 +164,10 @@ export class DeptService {
         });
 
         // 如果父部门或 ID 变化，需要更新所有后代的 ancestors
-        if ((parentId !== undefined && parentId !== existing.parentId) || deptId !== existing.deptId) {
+        if (
+          (parentId !== undefined && parentId !== existing.parentId) ||
+          deptId !== existing.deptId
+        ) {
           await this.updateDescendantAncestors(deptId, ancestors, tx);
         }
 
