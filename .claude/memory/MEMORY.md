@@ -1,5 +1,0 @@
-- [nest-rbac-practical-schema](nest-rbac-practical-schema.md) — NestJS 项目权限实现的完整 schema、service 和 API 设计
-- [nest-rbac-strategy](nest-rbac-strategy.md) — NestJS 后台项目权限模型建议方案，结合两个文档的优劣
-- [batch-2-auth-completed](batch-2-auth-completed.md) — 批次 2 认证模块的完整实现总结，包含 TokenService、AuthService、AuthGuard 和测试
-- [batch-5-system-management-completed](batch-5-system-management-completed.md) — 批次 5 系统管理模块（用户、角色、部门、职位）的完整实现
-- [batch-6-data-scope-completed](batch-6-data-scope-completed.md) — 批次 6 数据范围引擎的完整实现，含 DataScopeService、资源政策、47 个单元测试
