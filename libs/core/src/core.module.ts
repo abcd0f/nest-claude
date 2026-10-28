@@ -7,11 +7,12 @@ import { BUSINESS_CODE, DEFAULT_BUSINESS_MESSAGE } from '@app/common/constants/i
 import { throttlerConfig } from '@app/config';
 import { PermissionGuard, PermissionModule } from '@app/permission';
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { AllExceptionsFilter } from './filters/index.js';
 import { ResponseInterceptor } from './interceptors/index.js';
+import { GlobalValidationPipe } from './pipes/index.js';
 
 /**
  * core 基础设施模块。
@@ -44,6 +45,10 @@ import { ResponseInterceptor } from './interceptors/index.js';
     AuditModule,
   ],
   providers: [
+    {
+      provide: APP_PIPE,
+      useClass: GlobalValidationPipe,
+    },
     // 守卫的执行顺序由注册顺序决定
     {
       provide: APP_GUARD,

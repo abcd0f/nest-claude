@@ -3,12 +3,23 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setImmediate } from 'node:timers/promises';
+import { LoginLogQueryDto } from '@app/audit';
 import { createFastifyAdapter } from '@app/common';
 import { HTTP_LOG_TEST_SECRETS_PATTERN } from '@app/common/constants/regex.js';
 import { loggerConfig, redisConfig } from '@app/config';
 import { AllExceptionsFilter, RawResponse } from '@app/core';
 import { LoggerService, PinoLogger } from '@app/logger';
-import { BadRequestException, ConsoleLogger, Controller, Get, Inject, Logger, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConsoleLogger,
+  Controller,
+  Get,
+  Inject,
+  Logger,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -49,6 +60,15 @@ class LogProbeController {
   @Get('prisma-missing')
   prismaMissing(): never {
     throw Object.assign(new Error('database detail'), { code: 'P2025' });
+  }
+
+  @Get('validation')
+  validation(@Query() query: LoginLogQueryDto) {
+    return {
+      endTimeIsDate: query.endTime instanceof Date,
+      pageType: typeof query.page,
+      startTimeIsDate: query.startTime instanceof Date,
+    };
   }
 }
 
@@ -102,6 +122,28 @@ describe('Gateway Fastify 日志链路 (e2e)', () => {
 
   it('不带全局 API 前缀的根接口返回 404', async () => {
     expect((await app.inject({ method: 'GET', url: '/' })).statusCode).toBe(404);
+  });
+
+  it('全局校验管道转换 query DTO 并将非法日期返回 422', async () => {
+    const valid = await app.inject({
+      method: 'GET',
+      url: '/api/log-probe/validation?startTime=2026-10-14%2000%3A00%3A00&endTime=2026-10-17%2023%3A59%3A59&page=2',
+    });
+    expect(valid.statusCode).toBe(200);
+    expect(valid.json()).toMatchObject({
+      code: 0,
+      data: { endTimeIsDate: true, pageType: 'number', startTimeIsDate: true },
+    });
+
+    const invalid = await app.inject({
+      method: 'GET',
+      url: '/api/log-probe/validation?startTime=not-a-date',
+    });
+    expect(invalid.statusCode).toBe(422);
+    expect(invalid.json()).toMatchObject({
+      code: 422,
+      errors: [{ field: 'startTime' }],
+    });
   });
 
   it('并发请求跨 await 的业务日志与访问日志使用实际 Fastify ID，且不泄露凭据', async () => {

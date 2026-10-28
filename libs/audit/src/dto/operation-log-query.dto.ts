@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
-import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsDate, IsIn, IsInt, IsOptional, IsString, Matches, Min } from 'class-validator';
+import { transformAuditQueryDate } from './audit-query-date.transformer.js';
 
 /**
  * 操作日志查询 DTO
@@ -35,16 +36,24 @@ export class OperationLogQueryDto {
 
   /**
    * 时间范围起点（含）
+   *
+   * 由全局 `ValidationPipe({ transform: true })` 转换为 `Date`。
    */
   @IsOptional()
   @Type(() => Date)
+  @Transform(transformAuditQueryDate, { toClassOnly: true })
+  @IsDate()
   startTime?: Date;
 
   /**
    * 时间范围终点（含）
+   *
+   * 由全局 `ValidationPipe({ transform: true })` 转换为 `Date`。
    */
   @IsOptional()
   @Type(() => Date)
+  @Transform(transformAuditQueryDate, { toClassOnly: true })
+  @IsDate()
   endTime?: Date;
 
   /**
@@ -54,6 +63,8 @@ export class OperationLogQueryDto {
    */
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
+  @Min(1)
   page?: number = 1;
 
   /**
@@ -63,5 +74,7 @@ export class OperationLogQueryDto {
    */
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
+  @Min(1)
   pageSize?: number = 10;
 }

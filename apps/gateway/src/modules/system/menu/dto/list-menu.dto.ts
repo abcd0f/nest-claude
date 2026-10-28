@@ -8,8 +8,8 @@ import { IsIn, IsOptional, IsString } from 'class-validator';
  * `row-key="menuId"` + `tree-props` 自行拼树 —— 所以这里不分页，
  * 分页会把父子节点切到不同页，树永远拼不完整。
  *
- * 注意：项目未注册全局 `ValidationPipe`，query 参数到控制器时仍是字符串，
- * 装饰器只作为接口文档与约定，实际校验在 service 里做。
+ * query 参数由全局 `ValidationPipe({ transform: true })` 转换并校验；
+ * service 只负责组装查询条件。
  */
 export class ListMenuDto {
   /**

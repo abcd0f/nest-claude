@@ -44,10 +44,8 @@ export class AuditQueryService {
       }
     }
 
-    // 项目未注册全局 ValidationPipe，query 参数仍是字符串。
-    // 这里显式转数字，否则 Prisma 的 skip/take 会因类型不符抛 PrismaClientValidationError。
-    const page = Math.max(Number(query.page ?? 1) || 1, 1);
-    const pageSize = Math.max(Number(query.pageSize ?? 10) || 10, 1);
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
 
     const [records, total] = await this.prisma.$transaction([
@@ -101,10 +99,8 @@ export class AuditQueryService {
       }
     }
 
-    // 项目未注册全局 ValidationPipe，query 参数仍是字符串。
-    // 这里显式转数字，否则 Prisma 的 skip/take 会因类型不符抛 PrismaClientValidationError。
-    const page = Math.max(Number(query.page ?? 1) || 1, 1);
-    const pageSize = Math.max(Number(query.pageSize ?? 10) || 10, 1);
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
 
     const [records, total] = await this.prisma.$transaction([

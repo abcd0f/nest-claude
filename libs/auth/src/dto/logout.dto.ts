@@ -6,8 +6,7 @@ import { IsOptional, IsString } from 'class-validator';
  * access token 过期后，前端通常已经把本地令牌清掉、不再发送 Authorization 头，
  * 此时靠请求体里的 refreshToken 定位要撤销的会话。
  *
- * @note 项目当前未注册全局 ValidationPipe，这里的装饰器仅用于文档生成，
- * 实际校验由 service 侧的空值判断兜底。
+ * 请求参数由全局 `ValidationPipe({ transform: true })` 校验。
  */
 export class LogoutDto {
   /**
