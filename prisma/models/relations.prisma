@@ -22,6 +22,18 @@ model UserPost {
   @@map("sys_user_post")
 }
 
+/// 职位与部门关联
+model PostDept {
+  postId BigInt @map("post_id")
+  deptId BigInt @map("dept_id")
+  post   Post   @relation(fields: [postId], references: [postId], onDelete: Cascade)
+  dept   Dept   @relation(fields: [deptId], references: [deptId], onDelete: Cascade)
+
+  @@id([postId, deptId])
+  @@index([deptId])
+  @@map("sys_post_dept")
+}
+
 /// 角色与菜单关联
 model RoleMenu {
   roleId BigInt @map("role_id")

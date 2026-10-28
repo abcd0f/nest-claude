@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { BigIntId } from '@app/common';
+import { IsArray, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 /**
  * 更新职位 DTO
@@ -42,6 +43,12 @@ export class UpdatePostDto {
   @IsOptional()
   @IsIn(['0', '1'])
   status?: string;
+
+  /** 所属部门 ID 列表；传空数组表示清除所有部门关联。 */
+  @IsOptional()
+  @IsArray()
+  @BigIntId({ each: true })
+  deptIds?: bigint[];
 
   /**
    * 备注

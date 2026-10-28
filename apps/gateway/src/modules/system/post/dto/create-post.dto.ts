@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { BigIntId } from '@app/common';
+import { IsArray, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 /**
  * 创建职位 DTO
@@ -44,6 +45,12 @@ export class CreatePostDto {
   @IsOptional()
   @IsIn(['0', '1'])
   status?: string;
+
+  /** 所属部门 ID 列表；未传或空数组表示暂不分配部门。 */
+  @IsOptional()
+  @IsArray()
+  @BigIntId({ each: true })
+  deptIds?: bigint[];
 
   /**
    * 备注

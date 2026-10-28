@@ -19,7 +19,8 @@ model Post {
   /// 备注
   remark     String?  @db.VarChar(500)
 
-  users UserPost[]
+  users     UserPost[]
+  deptPosts PostDept[]
 
   @@map("sys_post")
 }

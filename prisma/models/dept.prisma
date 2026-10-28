@@ -25,6 +25,7 @@ model Dept {
 
   users     User[]
   roleDepts RoleDept[]
+  postDepts PostDept[]
 
   @@index([parentId])
   @@index([ancestors])
