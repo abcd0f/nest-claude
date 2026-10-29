@@ -47,15 +47,12 @@ export class PostController {
 
   /**
    * 更新职位
-   * PUT /system/post/:postId
+   * PUT /system/post
    */
-  @Put(':postId')
+  @Put()
   @Permission('system:post:edit')
-  async updatePost(
-    @Param() params: PostIdParamDto,
-    @Body() dto: UpdatePostDto,
-  ): Promise<PostResponseDto> {
-    return this.postService.updatePost(params.postId, dto);
+  async updatePost(@Body() dto: UpdatePostDto): Promise<PostResponseDto> {
+    return this.postService.updatePost(dto);
   }
 
   /**

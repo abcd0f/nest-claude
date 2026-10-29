@@ -49,15 +49,12 @@ export class RoleController {
 
   /**
    * 更新角色
-   * PUT /system/role/:roleId
+   * PUT /system/role
    */
-  @Put(':roleId')
+  @Put()
   @Permission('system:role:edit')
-  async updateRole(
-    @Param() params: RoleIdParamDto,
-    @Body() dto: UpdateRoleDto,
-  ): Promise<RoleResponseDto> {
-    return this.roleService.updateRole(params.roleId, dto);
+  async updateRole(@Body() dto: UpdateRoleDto): Promise<RoleResponseDto> {
+    return this.roleService.updateRole(dto);
   }
 
   /**

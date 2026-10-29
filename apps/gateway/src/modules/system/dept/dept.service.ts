@@ -95,11 +95,11 @@ export class DeptService {
 
   /**
    * 更新部门
-   * @param deptId 部门 ID（bigint）
-   * @param dto 更新部门 DTO
+   * @param dto 包含部门 ID 和更新字段的 DTO
    * @returns 更新后的部门
    */
-  async updateDept(deptId: bigint, dto: UpdateDeptDto): Promise<DeptResponseDto> {
+  async updateDept(dto: UpdateDeptDto): Promise<DeptResponseDto> {
+    const deptId = dto.deptId;
     const parentId = dto.parentId;
     const leaderId = dto.leaderId;
 

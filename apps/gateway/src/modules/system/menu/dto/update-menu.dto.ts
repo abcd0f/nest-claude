@@ -1,3 +1,4 @@
+import { BigIntId } from '@app/common';
 import { CreateMenuDto } from './create-menu.dto.js';
 
 /**
@@ -9,4 +10,8 @@ import { CreateMenuDto } from './create-menu.dto.js';
  * 唯一需要留意的差异在 `perms`：服务端按 `perms?.trim() || null` 落库，
  * 不传等于清空该菜单的权限（若权限已被角色引用，删除会被拒绝）。
  */
-export class UpdateMenuDto extends CreateMenuDto {}
+export class UpdateMenuDto extends CreateMenuDto {
+  /** 菜单 ID */
+  @BigIntId()
+  menuId!: bigint;
+}

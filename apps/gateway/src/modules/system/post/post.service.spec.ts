@@ -82,7 +82,7 @@ describe('post service', () => {
     transaction.dept.findFirst.mockResolvedValueOnce({ deptId: 3n });
     transaction.post.update.mockResolvedValueOnce({ ...postRow, deptId: 3n });
 
-    const updated = await service.updatePost(1n, { deptId: 3n });
+    const updated = await service.updatePost({ postId: 1n, deptId: 3n });
 
     expect(transaction.post.update).toHaveBeenCalledWith({
       where: { postId: 1n },
@@ -91,14 +91,14 @@ describe('post service', () => {
     expect(updated.deptId).toBe('3');
 
     transaction.post.update.mockResolvedValueOnce({ ...postRow, deptId: null });
-    const cleared = await service.updatePost(1n, { deptId: null });
+    const cleared = await service.updatePost({ postId: 1n, deptId: null });
     expect(cleared.deptId).toBeNull();
   });
 
   it('rejects unknown departments without changing the post', async () => {
     transaction.dept.findFirst.mockResolvedValue(null);
 
-    await expect(service.updatePost(1n, { deptId: 99n })).rejects.toBeInstanceOf(
+    await expect(service.updatePost({ postId: 1n, deptId: 99n })).rejects.toBeInstanceOf(
       BadRequestException,
     );
     expect(transaction.post.update).not.toHaveBeenCalled();

@@ -75,11 +75,12 @@ export class RoleService {
 
   /**
    * 更新角色
-   * @param roleId 角色 ID（bigint）
-   * @param dto 更新角色 DTO
+   * @param dto 包含角色 ID 和更新字段的 DTO
    * @returns 更新后的角色
    */
-  async updateRole(roleId: bigint, dto: UpdateRoleDto): Promise<RoleResponseDto> {
+  async updateRole(dto: UpdateRoleDto): Promise<RoleResponseDto> {
+    const roleId = dto.roleId;
+
     // 检查角色是否存在
     const existing = await this.prisma.role.findUnique({ where: { roleId } });
     if (!existing) {

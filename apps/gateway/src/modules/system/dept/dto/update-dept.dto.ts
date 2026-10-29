@@ -7,6 +7,10 @@ import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validat
  * 所有字段均可选，只更新传入的字段；未传字段保持原值。
  */
 export class UpdateDeptDto {
+  /** 部门 ID */
+  @BigIntId()
+  deptId!: bigint;
+
   /**
    * 父部门 ID
    *

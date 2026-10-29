@@ -75,11 +75,12 @@ export class PostService {
 
   /**
    * 更新职位
-   * @param postId 职位 ID（bigint）
-   * @param dto 更新职位 DTO
+   * @param dto 包含职位 ID 和更新字段的 DTO
    * @returns 更新后的职位
    */
-  async updatePost(postId: bigint, dto: UpdatePostDto): Promise<PostResponseDto> {
+  async updatePost(dto: UpdatePostDto): Promise<PostResponseDto> {
+    const postId = dto.postId;
+
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.post.findUnique({ where: { postId } });
       if (!existing) {

@@ -63,15 +63,12 @@ export class DeptController {
 
   /**
    * 更新部门
-   * PUT /system/dept/:deptId
+   * PUT /system/dept
    */
-  @Put(':deptId')
+  @Put()
   @Permission('system:dept:edit')
-  async updateDept(
-    @Param() params: DeptIdParamDto,
-    @Body() dto: UpdateDeptDto,
-  ): Promise<DeptResponseDto> {
-    return this.deptService.updateDept(params.deptId, dto);
+  async updateDept(@Body() dto: UpdateDeptDto): Promise<DeptResponseDto> {
+    return this.deptService.updateDept(dto);
   }
 
   /**

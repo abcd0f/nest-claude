@@ -362,11 +362,11 @@ export class MenuService {
 
   /**
    * 更新菜单
-   * @param menuId 菜单 ID（bigint）
-   * @param dto 更新菜单 DTO
+   * @param dto 包含菜单 ID 和更新字段的 DTO
    * @returns 更新后的菜单
    */
-  async updateMenu(menuId: bigint, dto: UpdateMenuDto): Promise<MenuResponseDto> {
+  async updateMenu(dto: UpdateMenuDto): Promise<MenuResponseDto> {
+    const menuId = dto.menuId;
     const parentId = dto.parentId;
 
     // 校验菜单类型与字段匹配

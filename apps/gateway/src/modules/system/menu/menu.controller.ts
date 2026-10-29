@@ -82,14 +82,11 @@ export class MenuController {
 
   /**
    * 更新菜单
-   * PUT /system/menu/:menuId
+   * PUT /system/menu
    */
-  @Put(':menuId')
-  async updateMenu(
-    @Param() params: MenuIdParamDto,
-    @Body() dto: UpdateMenuDto,
-  ): Promise<MenuResponseDto> {
-    return this.menuService.updateMenu(params.menuId, dto);
+  @Put()
+  async updateMenu(@Body() dto: UpdateMenuDto): Promise<MenuResponseDto> {
+    return this.menuService.updateMenu(dto);
   }
 
   /**

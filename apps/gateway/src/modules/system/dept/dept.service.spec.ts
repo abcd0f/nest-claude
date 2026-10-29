@@ -44,7 +44,7 @@ describe('dept service', () => {
   it('rejects disabling a department with an enabled descendant', async () => {
     transaction.dept.findFirst.mockResolvedValue({ deptId: 2n });
 
-    await expect(service.updateDept(1n, { status: '1' })).rejects.toBeInstanceOf(
+    await expect(service.updateDept({ deptId: 1n, status: '1' })).rejects.toBeInstanceOf(
       BadRequestException,
     );
     expect(transaction.dept.update).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('dept service', () => {
   });
 
   it('allows disabling a department when all descendants are disabled', async () => {
-    const result = await service.updateDept(1n, { status: '1' });
+    const result = await service.updateDept({ deptId: 1n, status: '1' });
 
     expect(transaction.dept.update).toHaveBeenCalledWith({
       where: { deptId: 1n },

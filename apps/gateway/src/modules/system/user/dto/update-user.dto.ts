@@ -16,6 +16,10 @@ import {
  * 登录账号 `userName` 与密码不在本 DTO 中，密码变更走「重置密码」接口。
  */
 export class UpdateUserDto {
+  /** 用户 ID */
+  @BigIntId()
+  userId!: bigint;
+
   /**
    * 用户昵称
    *

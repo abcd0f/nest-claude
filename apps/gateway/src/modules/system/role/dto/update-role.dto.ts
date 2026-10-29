@@ -1,3 +1,4 @@
+import { BigIntId } from '@app/common';
 import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 /**
@@ -6,6 +7,10 @@ import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validat
  * 所有字段均可选，只更新传入的字段；未传字段保持原值。
  */
 export class UpdateRoleDto {
+  /** 角色 ID */
+  @BigIntId()
+  roleId!: bigint;
+
   /**
    * 角色名称
    *

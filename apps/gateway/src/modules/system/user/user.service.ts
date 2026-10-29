@@ -152,11 +152,11 @@ export class UserService {
 
   /**
    * 更新用户
-   * @param userId 用户 ID（bigint）
-   * @param dto 更新用户 DTO
+   * @param dto 包含用户 ID 和更新字段的 DTO
    * @returns 更新后的用户
    */
-  async updateUser(userId: bigint, dto: UpdateUserDto): Promise<UserResponseDto> {
+  async updateUser(dto: UpdateUserDto): Promise<UserResponseDto> {
+    const userId = dto.userId;
     const roleIds = dto.roleIds;
     const postIds = dto.postIds;
 

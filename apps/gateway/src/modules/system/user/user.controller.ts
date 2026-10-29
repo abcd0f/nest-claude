@@ -64,15 +64,12 @@ export class UserController {
 
   /**
    * 更新用户
-   * PUT /system/user/:userId
+   * PUT /system/user
    */
-  @Put(':userId')
+  @Put()
   @Permission('system:user:edit')
-  async updateUser(
-    @Param() params: UserIdParamDto,
-    @Body() dto: UpdateUserDto,
-  ): Promise<UserResponseDto> {
-    return this.userService.updateUser(params.userId, dto);
+  async updateUser(@Body() dto: UpdateUserDto): Promise<UserResponseDto> {
+    return this.userService.updateUser(dto);
   }
 
   /**

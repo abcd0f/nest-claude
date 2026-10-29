@@ -7,6 +7,10 @@ import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validat
  * 所有字段均可选，只更新传入的字段；未传字段保持原值。
  */
 export class UpdatePostDto {
+  /** 职位 ID */
+  @BigIntId()
+  postId!: bigint;
+
   /**
    * 职位编码
    *
