@@ -1,4 +1,5 @@
 import { Expose, Type } from 'class-transformer';
+import { MenuMetaDto } from './menu-meta.dto.js';
 
 /**
  * 前端路由 meta 元信息
@@ -9,7 +10,7 @@ import { Expose, Type } from 'class-transformer';
  * 注意：这里**不返回** `authority`。后端路由模式下菜单已按角色过滤完毕，
  * 再返回 `authority` 只会让前端重复判断，且角色键与菜单权限是两套概念。
  */
-export class MenuRouteMetaDto {
+export class MenuRouteMetaDto extends MenuMetaDto {
   /**
    * 菜单标题
    *
@@ -56,16 +57,6 @@ export class MenuRouteMetaDto {
    */
   @Expose()
   keepAlive?: boolean;
-
-  /**
-   * 内嵌 iframe 地址
-   *
-   * 仅外链菜单（`sys_menu.is_frame = '0'` 且 path 为 http/https 地址）返回，
-   * 值为 `sys_menu.path` 原文。前端 `IFrameView` 直接读这个字段。
-   * @example "https://www.vben.pro"
-   */
-  @Expose()
-  iframeSrc?: string;
 
   /**
    * 路由查询参数

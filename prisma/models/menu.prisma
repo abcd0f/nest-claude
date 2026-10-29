@@ -6,8 +6,12 @@ model Menu {
   parentId   BigInt   @default(0) @map("parent_id")
   /// 菜单名称
   menuName   String   @map("menu_name") @db.VarChar(64)
-  /// 类型：M 目录、C 菜单、F 按钮
+  /// 类型：M 目录、C 菜单、F 按钮、E 内嵌、L 外链
   menuType   String   @map("menu_type") @db.Char(1)
+  /// 路由名称；历史菜单未设置时由路径生成
+  routeName  String?  @unique @map("route_name") @db.VarChar(100)
+  /// Vben 扩展配置（徽标、激活图标、链接及高级显示设置）
+  meta       Json     @default("{}")
   /// 显示顺序
   orderNum   Int      @default(0) @map("order_num")
   /// 路由地址

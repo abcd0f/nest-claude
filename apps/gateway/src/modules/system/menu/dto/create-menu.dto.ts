@@ -1,5 +1,7 @@
 import { BigIntId } from '@app/common';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsObject, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { MenuMetaDto } from './menu-meta.dto.js';
 
 /**
  * 创建菜单 DTO
@@ -24,16 +26,28 @@ export class CreateMenuDto {
    * @example "用户管理"
    */
   @IsString()
+  @MinLength(1)
   @MaxLength(64)
   menuName!: string;
 
+  /** 独立的路由名称，兼容未配置名称的历史菜单。 */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  routeName?: string;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => MenuMetaDto)
+  meta?: MenuMetaDto;
+
   /**
-   * 菜单类型：M 目录、C 菜单、F 按钮
-   *
-   * 只有 C / F 类型的菜单会绑定权限，M 类型仅用于分组。
+   * 菜单类型：M 目录、C 菜单、F 按钮、E 内嵌、L 外链
    * @example "C"
    */
-  @IsIn(['M', 'C', 'F'], { message: 'menuType 必须是 M/C/F' })
+  @IsIn(['M', 'C', 'F', 'E', 'L'], { message: 'menuType 必须是 M/C/F/E/L' })
   menuType!: string;
 
   /**

@@ -1,4 +1,5 @@
 import type { MenuModel } from '@app/database/generated/prisma/models/Menu.js';
+import type { MenuMetaDto } from './dto/menu-meta.dto.js';
 import type { MenuRouteMetaDto } from './dto/menu-route.dto.js';
 import { toDto, toDtoList } from '@app/common/dto/dto-transformer.js';
 import { andWhere } from '@app/common/utils/where.util.js';
@@ -11,12 +12,14 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { isURL } from 'class-validator';
 import { CreateMenuDto } from './dto/create-menu.dto.js';
 import { ListMenuDto } from './dto/list-menu.dto.js';
 import { MenuResponseDto, MenuTreeDto } from './dto/menu-response.dto.js';
 import { MenuRouteDto } from './dto/menu-route.dto.js';
 import { RoleMenuTreeDto } from './dto/role-menu-tree.dto.js';
 import { UpdateMenuDto } from './dto/update-menu.dto.js';
+import { resolveMenuRouteInfo } from './menu-route.util.js';
 
 /** 目录（M）使用的布局组件标识，对应前端 `layoutMap.BasicLayout` */
 const BASIC_LAYOUT_COMPONENT = 'BasicLayout';
@@ -77,9 +80,7 @@ export class MenuService {
       dto.menuName ? { menuName: { contains: dto.menuName } } : null,
       dto.status ? { status: dto.status } : null,
       dto.visible ? { visible: dto.visible } : null,
-      dto.parentId === undefined
-        ? null
-        : { parentId: dto.parentId },
+      dto.parentId === undefined ? null : { parentId: dto.parentId },
     );
 
     const menus = await this.prisma.menu.findMany({
@@ -87,7 +88,17 @@ export class MenuService {
       orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
     });
 
-    return toDtoList(MenuResponseDto, menus);
+    const allMenus = await this.prisma.menu.findMany({
+      orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
+    });
+    const routeInfo = resolveMenuRouteInfo(allMenus);
+    return toDtoList(
+      MenuResponseDto,
+      menus.map((menu) => ({
+        ...menu,
+        routeName: routeInfo.get(menu.menuId)?.name,
+      })),
+    );
   }
 
   /**
@@ -98,7 +109,7 @@ export class MenuService {
    * 前端 `generateRoutesByBackend` 拿到后直接 `router.addRoute()`，不做任何映射。
    *
    * 过滤规则：
-   * 1. 只取 `status = '0'`（启用）的 M / C 节点，F（按钮）不是路由，不返回。
+   * 1. 只取启用的目录、菜单、内嵌和外链节点，F（按钮）不返回。
    * 2. 超管（`superadmin`）返回全部；其他角色按 `sys_role_menu` 取并集。
    * 3. 授权集合会**补全祖先链**：只授权了子菜单没授权目录时，自动补上父目录，
    *    否则子菜单会因为父节点缺失在构建时被丢掉。
@@ -108,14 +119,11 @@ export class MenuService {
    * @param roleKeys 当前用户有效角色键列表，用于判定超管
    * @returns 前端路由树（顶级为绝对路径，子级为相对路径）
    */
-  async getUserMenuRoutes(
-    userId: bigint,
-    roleKeys: readonly string[],
-  ): Promise<MenuRouteDto[]> {
+  async getUserMenuRoutes(userId: bigint, roleKeys: readonly string[]): Promise<MenuRouteDto[]> {
     // 菜单表规模是百级，一次性取出后在内存里做过滤与建树，
     // 避免按层级递归查库（N+1）。
     const menus = await this.prisma.menu.findMany({
-      where: { status: '0', menuType: { in: ['M', 'C'] } },
+      where: { status: '0', menuType: { in: ['M', 'C', 'E', 'L'] } },
       orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
     });
 
@@ -166,12 +174,9 @@ export class MenuService {
       childrenOf.set(parentKey, siblings);
     }
 
-    // 路由名称必须全局唯一，跨整棵树共享一个 used 集合
-    const usedNames = new Set<string>();
+    const routeInfo = resolveMenuRouteInfo(menus);
 
-    return roots.map(
-      (menu) => this.buildRouteNode(menu, '', childrenOf, usedNames).route,
-    );
+    return roots.map((menu) => this.buildRouteNode(menu, '', childrenOf, routeInfo).route);
   }
 
   /**
@@ -210,24 +215,29 @@ export class MenuService {
    * @param menu 菜单行
    * @param parentAbsolutePath 父节点的绝对路径，顶级传空字符串
    * @param childrenOf 已按 parentId 分组的子节点表
-   * @param usedNames 已占用的路由名称集合
+   * @param routeInfo 已解析的路由路径和名称
    * @returns 该节点的绝对路径与路由记录
    */
   private buildRouteNode(
     menu: MenuModel,
     parentAbsolutePath: string,
     childrenOf: Map<string, MenuModel[]>,
-    usedNames: Set<string>,
+    routeInfo: ReturnType<typeof resolveMenuRouteInfo>,
   ): { absolutePath: string; route: MenuRouteDto } {
     const rawPath = (menu.path ?? '').trim();
     const isDirectory = menu.menuType === 'M';
+    const isLink = menu.menuType === 'L';
+    const isEmbedded = menu.menuType === 'E';
     // isFrame = '0' 表示"是外链"，此时 path 存的是 http(s) 地址
     const isExternal = menu.isFrame === '0' && /^https?:\/\//i.test(rawPath);
 
     let absolutePath: string;
     let routePath: string;
 
-    if (isExternal) {
+    if (isLink) {
+      routePath = `/link/${menu.menuId}`;
+      absolutePath = routePath;
+    } else if (isExternal) {
       // URL 不能直接当路由路径，用 menuId 生成稳定的本地路径，
       // 真实地址放进 meta.iframeSrc
       routePath = `/iframe/${menu.menuId}`;
@@ -239,21 +249,21 @@ export class MenuService {
     } else {
       // 相对路径（RuoYi 默认写法），与父路径拼接
       routePath = rawPath || `menu-${menu.menuId}`;
-      absolutePath = parentAbsolutePath
-        ? `${parentAbsolutePath}/${routePath}`
-        : `/${routePath}`;
+      absolutePath = parentAbsolutePath ? `${parentAbsolutePath}/${routePath}` : `/${routePath}`;
+      if (!parentAbsolutePath) routePath = absolutePath;
     }
 
     let component: string;
-    if (isExternal) {
+    if (isExternal || isEmbedded) {
       component = IFRAME_COMPONENT;
-    } else if (isDirectory) {
+    } else if (isDirectory || isLink) {
       component = BASIC_LAYOUT_COMPONENT;
     } else {
       component = menu.component?.trim() || NOT_FOUND_COMPONENT;
     }
 
     const meta: MenuRouteMetaDto = {
+      ...(menu.meta as MenuMetaDto),
       title: menu.menuName,
       order: menu.orderNum,
       hideInMenu: menu.visible === '1',
@@ -262,7 +272,7 @@ export class MenuService {
     if (menu.icon) {
       meta.icon = menu.icon;
     }
-    if (!isDirectory) {
+    if (menu.menuType === 'C' && !isExternal) {
       // is_cache = '0' 表示"缓存"
       meta.keepAlive = menu.isCache === '0';
     }
@@ -275,7 +285,7 @@ export class MenuService {
     }
 
     const route: MenuRouteDto = {
-      name: buildRouteName(absolutePath, menu.menuId, usedNames),
+      name: routeInfo.get(menu.menuId)!.name,
       path: routePath,
       component,
       meta,
@@ -284,7 +294,7 @@ export class MenuService {
     const childMenus = childrenOf.get(menu.menuId.toString()) ?? [];
     if (childMenus.length > 0) {
       const children = childMenus.map((child) =>
-        this.buildRouteNode(child, absolutePath, childrenOf, usedNames),
+        this.buildRouteNode(child, absolutePath, childrenOf, routeInfo),
       );
       route.children = children.map((child) => child.route);
       // 目录被点击时跳到第一个子菜单，避免落在空白页
@@ -308,7 +318,13 @@ export class MenuService {
       throw new NotFoundException(`菜单 ${menuId} 不存在`);
     }
 
-    return toDto(MenuResponseDto, menu);
+    const allMenus = await this.prisma.menu.findMany({
+      orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
+    });
+    return toDto(MenuResponseDto, {
+      ...menu,
+      routeName: resolveMenuRouteInfo(allMenus).get(menuId)?.name,
+    });
   }
 
   /**
@@ -321,6 +337,7 @@ export class MenuService {
 
     // 校验菜单类型与字段匹配
     this.validateMenuTypeFields(dto);
+    await this.validateRouteIdentity(dto);
 
     // 校验父菜单存在（非根节点）
     if (parentId !== 0n) {
@@ -335,9 +352,11 @@ export class MenuService {
             parentId,
             menuName: dto.menuName,
             menuType: dto.menuType,
+            routeName: dto.routeName?.trim() || null,
+            meta: this.normalizeMeta(dto),
             orderNum: dto.orderNum,
-            path: dto.path,
-            component: dto.component,
+            path: ['F', 'L'].includes(dto.menuType) ? null : dto.path,
+            component: dto.menuType === 'C' ? dto.component : null,
             query: dto.query,
             isFrame: dto.isFrame ?? '1',
             isCache: dto.isCache ?? '0',
@@ -371,10 +390,11 @@ export class MenuService {
 
     // 校验菜单类型与字段匹配
     this.validateMenuTypeFields(dto);
+    await this.validateRouteIdentity(dto, menuId);
 
     // 校验父菜单存在且不形成环
     if (parentId !== 0n) {
-      await this.checkParentValid(parentId, menuId);
+      await this.checkParentExists(parentId);
     }
 
     return await this.prisma.$transaction(
@@ -388,6 +408,13 @@ export class MenuService {
           throw new NotFoundException(`菜单 ${menuId} 不存在`);
         }
 
+        if (
+          ['F', 'L', 'E'].includes(dto.menuType) &&
+          (await tx.menu.count({ where: { parentId: menuId } })) > 0
+        ) {
+          throw new BadRequestException('存在子菜单，不能改为按钮、内嵌或外链');
+        }
+
         // 更新菜单
         const menu = await tx.menu.update({
           where: { menuId },
@@ -395,9 +422,11 @@ export class MenuService {
             parentId,
             menuName: dto.menuName,
             menuType: dto.menuType,
+            routeName: dto.routeName?.trim() || null,
+            meta: this.normalizeMeta(dto),
             orderNum: dto.orderNum,
-            path: dto.path,
-            component: dto.component,
+            path: ['F', 'L'].includes(dto.menuType) ? null : dto.path,
+            component: dto.menuType === 'C' ? dto.component : null,
             query: dto.query,
             isFrame: dto.isFrame,
             isCache: dto.isCache,
@@ -571,17 +600,10 @@ export class MenuService {
   /**
    * 同步菜单的权限记录
    * 核心逻辑：
-   * 1. M 类型不产生权限
-   * 2. C/F 类型但没有 perms，解除权限绑定
-   * 3. C/F 类型有 perms，创建或更新权限
+   * 有权限标识时创建或更新权限；清空时解绑。
    */
   private async syncPermissionFromMenu(tx: any, menu: any): Promise<void> {
-    // M 类型不产生权限
-    if (menu.menuType === 'M') {
-      return;
-    }
-
-    // C/F 类型但没有 perms，解除权限绑定
+    // 没有 perms 时解除权限绑定
     if (!menu.perms) {
       const existing = await tx.permission.findUnique({
         where: { menuId: menu.menuId },
@@ -671,20 +693,16 @@ export class MenuService {
   private validateMenuTypeFields(dto: CreateMenuDto | UpdateMenuDto): void {
     const { menuType, path, component, perms } = dto;
 
-    if (menuType === 'M') {
-      // 目录：不允许 perms
-      if (perms) {
-        throw new BadRequestException('目录（M）不允许设置权限标识');
-      }
-    } else if (menuType === 'C') {
+    if (['M', 'C', 'E'].includes(menuType) && !path?.trim()) {
+      throw new BadRequestException('目录、菜单和内嵌页面必须设置路由地址');
+    }
+    if (menuType === 'C') {
       // 菜单：必须有 path 和 component
-      if (!path) {
-        throw new BadRequestException('菜单（C）必须设置路由地址');
-      }
-      if (!component) {
+      if (!component?.trim()) {
         throw new BadRequestException('菜单（C）必须设置组件路径');
       }
     } else if (menuType === 'F') {
+      if (!perms?.trim()) throw new BadRequestException('按钮必须设置权限标识');
       // 按钮：不允许 path 和 component
       if (path) {
         throw new BadRequestException('按钮（F）不允许设置路由地址');
@@ -692,6 +710,90 @@ export class MenuService {
       if (component) {
         throw new BadRequestException('按钮（F）不允许设置组件路径');
       }
+    }
+    const url =
+      menuType === 'E' ? dto.meta?.iframeSrc : menuType === 'L' ? dto.meta?.link : undefined;
+    if (
+      ['E', 'L'].includes(menuType) &&
+      (!url ||
+        !isURL(url, { protocols: ['http', 'https'], require_protocol: true, require_tld: false }))
+    ) {
+      throw new BadRequestException('内嵌和外链必须设置有效的 HTTP(S) 地址');
+    }
+  }
+
+  private normalizeMeta(dto: CreateMenuDto) {
+    const meta = { ...dto.meta };
+    if (dto.menuType === 'F') return {};
+    if (dto.menuType !== 'E') delete meta.iframeSrc;
+    if (dto.menuType !== 'L') delete meta.link;
+    if (!['C', 'E'].includes(dto.menuType)) {
+      delete meta.activePath;
+      delete meta.affixTab;
+    }
+    if (!['M', 'C'].includes(dto.menuType)) delete meta.hideChildrenInMenu;
+    if (dto.menuType === 'L') {
+      delete meta.activeIcon;
+      delete meta.hideInBreadcrumb;
+      delete meta.hideInTab;
+    }
+    if (meta.badgeType !== 'normal') delete meta.badge;
+    // Prisma JSON 不接受 undefined；表单清空字段时保存为空对象。
+    return JSON.parse(JSON.stringify(meta));
+  }
+
+  private async validateRouteIdentity(dto: CreateMenuDto, menuId?: bigint) {
+    if (menuId !== undefined && menuId === dto.parentId)
+      throw new BadRequestException('不能选择自身作为上级菜单');
+    const menus = await this.prisma.menu.findMany({
+      orderBy: [{ orderNum: 'asc' }, { menuId: 'asc' }],
+    });
+    const before = resolveMenuRouteInfo(menus);
+    if (
+      dto.routeName &&
+      [...before].some(([id, info]) => id !== menuId && info.name === dto.routeName?.trim())
+    ) {
+      throw new ConflictException('菜单名称已存在');
+    }
+    const candidateId = menuId ?? -1n;
+    const candidate = {
+      ...dto,
+      menuId: candidateId,
+      path: dto.path ?? null,
+      routeName: dto.routeName ?? null,
+      isFrame: dto.isFrame ?? '1',
+    };
+    let after: ReturnType<typeof resolveMenuRouteInfo>;
+    try {
+      after = resolveMenuRouteInfo([...menus.filter((menu) => menu.menuId !== menuId), candidate]);
+    } catch {
+      throw new BadRequestException('父菜单不能是当前菜单的后代');
+    }
+    const proposed = [...menus.filter((menu) => menu.menuId !== menuId), candidate];
+    for (const menu of proposed.filter((item) => !['F', 'L'].includes(item.menuType))) {
+      const path = after.get(menu.menuId)!.path;
+      if (menu.menuId !== candidateId && path === before.get(menu.menuId)?.path) continue;
+      if (
+        proposed.some(
+          (other) =>
+            other.menuId !== menu.menuId &&
+            other.menuType !== 'F' &&
+            after.get(other.menuId)?.path === path,
+        )
+      ) {
+        throw new ConflictException(`路由地址 ${path} 已存在`);
+      }
+    }
+    if (
+      dto.meta?.activePath &&
+      !proposed.some(
+        (menu) =>
+          menu.menuId !== candidateId &&
+          !['F', 'L'].includes(menu.menuType) &&
+          after.get(menu.menuId)?.path === dto.meta?.activePath,
+      )
+    ) {
+      throw new BadRequestException('激活路径必须指向已存在的菜单');
     }
   }
 
@@ -706,42 +808,9 @@ export class MenuService {
     if (!parent) {
       throw new BadRequestException(`父菜单 ${parentId} 不存在`);
     }
-  }
-
-  /**
-   * 检查父菜单是否有效（存在且不形成环）
-   */
-  private async checkParentValid(parentId: bigint, currentMenuId: bigint): Promise<void> {
-    await this.checkParentExists(parentId);
-
-    // 检查是否形成环：父菜单不能是当前菜单的后代
-    const descendants = await this.getDescendantIds(currentMenuId);
-    if (descendants.includes(parentId)) {
-      throw new BadRequestException('父菜单不能是当前菜单的后代，会形成循环');
+    if (!['M', 'C'].includes(parent.menuType) || parent.isFrame === '0') {
+      throw new BadRequestException('只有目录和菜单可以作为上级菜单');
     }
-  }
-
-  /**
-   * 获取菜单的所有后代 ID
-   */
-  private async getDescendantIds(menuId: bigint): Promise<bigint[]> {
-    const descendants: bigint[] = [];
-    const queue = [menuId];
-
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      const children = await this.prisma.menu.findMany({
-        where: { parentId: currentId },
-        select: { menuId: true },
-      });
-
-      for (const child of children) {
-        descendants.push(child.menuId);
-        queue.push(child.menuId);
-      }
-    }
-
-    return descendants;
   }
 
   /**
@@ -795,35 +864,6 @@ function parsePermissionCode(code: string): { resource: string | null; action: s
     resource: segments[segments.length - 2] ?? null,
     action: segments[segments.length - 1] ?? null,
   };
-}
-
-/**
- * 由绝对路径生成前端路由名称
- *
- * 规则：`/system/user` → `SystemUser`，`/system/login-log` → `SystemLoginLog`。
- * 名称必须全局唯一 —— 前端 `generateMenus` 用 `router.getRoutes()` 的 name→path
- * 映射反查菜单真实路径，重名会导致点击菜单跳错页面，因此冲突时追加菜单 ID。
- *
- * @param absolutePath 路由绝对路径
- * @param menuId 菜单 ID（冲突兜底后缀）
- * @param used 已占用的名称集合，会被就地写入
- */
-function buildRouteName(absolutePath: string, menuId: bigint, used: Set<string>): string {
-  const base =
-    absolutePath
-      .split('/')
-      .filter(Boolean)
-      .map((segment) =>
-        segment.replace(/[^a-z0-9]+(.)?/gi, (_, char: string) =>
-          char ? char.toUpperCase() : ''),
-      )
-      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join('') || `Menu${menuId}`;
-
-  const name = used.has(base) ? `${base}${menuId}` : base;
-  used.add(name);
-
-  return name;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { DateFormat } from '@app/core/decorators/index.js';
-import { Expose, Transform } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
+import { MenuMetaDto } from './menu-meta.dto.js';
 
 /**
  * 菜单响应 DTO
@@ -31,8 +32,15 @@ export class MenuResponseDto {
   @Expose()
   menuName!: string;
 
+  @Expose()
+  routeName?: string | null;
+
+  @Expose()
+  @Type(() => MenuMetaDto)
+  meta?: MenuMetaDto;
+
   /**
-   * 菜单类型：M 目录、C 菜单、F 按钮
+   * 菜单类型：M 目录、C 菜单、F 按钮、E 内嵌、L 外链
    */
   @Expose()
   menuType!: string;
